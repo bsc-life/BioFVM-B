@@ -1,0 +1,11 @@
+Just do:
+
+$ make tutorial1
+
+If we change N in tutorial1.cpp, then only tutorial1.cpp is recompiled.
+
+When we do $ make clean, it completely removes all .o files and hence doing
+
+$ make tutorial1
+
+will again recompile ALL the .cpp files. 
