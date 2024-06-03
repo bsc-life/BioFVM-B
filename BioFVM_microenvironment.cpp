@@ -128,6 +128,7 @@ namespace BioFVM
 		bulk_source_sink_solver_setup_done = false;
 		thomas_setup_done = false;
 		diffusion_solver_setup_done = false;
+		diffusion_solver_vectorized_setup_done = false;
 
 		//diffusion_decay_solver = empty_diffusion_solver;
 		diffusion_decay_solver = diffusion_decay_solver__constant_coefficients_LOD_3D;
@@ -223,7 +224,7 @@ namespace BioFVM
 
 	void Microenvironment::add_dirichlet_node(int x, int y, int z, std::vector<double> &value)
 	{
-		(*(mesh.voxels[x]))[y*mesh.z_size+z].is_Dirichlet = true;
+		voxels(x,y,z).is_Dirichlet = true;
 		//(*(dirichlet_value_vectors[x]))[y*mesh.z_size+z] = value;
 		int index = x*mesh.y_size*mesh.z_size*number_of_densities() + 
 					y*mesh.z_size*number_of_densities() +
@@ -266,7 +267,7 @@ namespace BioFVM
 	void Microenvironment::update_dirichlet_node(int x, int y, int z, std::vector<double> &new_value)
 	{
 		
-		(*(mesh.voxels[x]))[y*mesh.z_size+z].is_Dirichlet = true;
+		voxels(x,y,z).is_Dirichlet = true;
 		int index = x*mesh.y_size*mesh.z_size*number_of_densities() + 
 					y*mesh.z_size*number_of_densities() +
 					z*number_of_densities();
@@ -317,7 +318,7 @@ namespace BioFVM
 	bool &Microenvironment::is_dirichlet_node(int x, int y, int z)
 	{
 		//return mesh.voxels[voxel_index].is_Dirichlet;
-		return (*(mesh.voxels[x]))[y*mesh.z_size+z].is_Dirichlet;
+		return  voxels(x,y,z).is_Dirichlet;
 	}
 
 
@@ -343,33 +344,7 @@ namespace BioFVM
 		int z_begin = 0;
 		int z_end = mesh.z_size -1;
 		int densities = number_of_densities();
-		/*
-		#pragma parallel for collapse(2)
-		for (int j = 0 ; j < mesh.y_size; j++){
-			for (int k = 0; k < mesh.z_size; k++){
-				int index =  x_begin*mesh.y_size*mesh.z_size*densities + 
-							 j*mesh.z_size*densities +
-							 k*densities;
-				for (int d = 0; d < densities; d++)
-					{
-						if (dirichlet_activation_vector[d] == true)
-						{
-							p_density_vectors[index+d] = dirichlet_value_vectors[index+d];
-						}
-					}
-				index =      x_end*mesh.y_size*mesh.z_size*densities + 
-							 j*mesh.z_size*densities +
-							 k*densities;
-				for (int d = 0; d < densities; d++)
-					{
-						if (dirichlet_activation_vector[d] == true)
-						{
-							p_density_vectors[index+d] = dirichlet_value_vectors[index+d];
-						}
-					}
-			}
-		}*/
-		//X dirichlet conditions
+		
 		if (rank == 0)
 		{
 			#pragma parallel for collapse(2)
@@ -463,6 +438,122 @@ namespace BioFVM
 
 
 		return;
+	}
+
+	void Microenvironment::apply_dirichlet_conditions_v2( int rank, int size ) {
+    {
+    int x_begin = 0;
+    int x_end = mesh.x_size - 1;
+    int y_begin = 0;
+    int y_end = mesh.y_size - 1;
+    int z_begin = 0;
+    int z_end = mesh.z_size - 1;
+    int densities = number_of_densities();
+
+    #pragma omp parallel 
+    {
+        // X dirichlet conditions
+        if (rank == 0)
+        {
+            #pragma omp for collapse(2)
+            for (int j = 0; j < mesh.y_size; j++)
+            {
+                for (int k = 0; k < mesh.z_size; k++)
+                {
+                    int index = x_begin * mesh.y_size * mesh.z_size * densities +
+                                j * mesh.z_size * densities +
+                                k * densities;
+                    for (int d = 0; d < densities; d++)
+                    {
+                        if (dirichlet_activation_vector[d] == true)
+                        {
+                            p_density_vectors[index + d] = dirichlet_value_vectors[index + d];
+                        }
+                    }
+                }
+            }
+        }
+
+        if (rank == (size - 1))
+        {
+            #pragma omp for collapse(2)
+            for (int j = 0; j < mesh.y_size; j++)
+            {
+                for (int k = 0; k < mesh.z_size; k++)
+                {
+                    int index = x_end * mesh.y_size * mesh.z_size * densities +
+                                j * mesh.z_size * densities +
+                                k * densities;
+                    for (int d = 0; d < densities; d++)
+                    {
+                        if (dirichlet_activation_vector[d] == true)
+                        {
+                            p_density_vectors[index + d] = dirichlet_value_vectors[index + d];
+                        }
+                    }
+                }
+            }
+        }
+
+        #pragma omp for collapse(2)
+        for (int i = 0; i < mesh.x_size; i++)
+        {
+            for (int k = 0; k < mesh.z_size; k++)
+            {
+                int index = i * mesh.y_size * mesh.z_size * densities +
+                            y_begin * mesh.z_size * densities +
+                            k * densities;
+                for (int d = 0; d < densities; d++)
+                {
+                    if (dirichlet_activation_vector[d] == true)
+                    {
+                        p_density_vectors[index + d] = dirichlet_value_vectors[index + d];
+                    }
+                }
+                index = i * mesh.y_size * mesh.z_size * densities +
+                        y_end * mesh.z_size * densities +
+                        k * densities;
+                for (int d = 0; d < densities; d++)
+                {
+                    if (dirichlet_activation_vector[d] == true)
+                    {
+                        p_density_vectors[index + d] = dirichlet_value_vectors[index + d];
+                    }
+                }
+            }
+        }
+
+        #pragma omp for collapse(2)
+        for (int i = 0; i < mesh.x_size; i++)
+        {
+            for (int j = 0; j < mesh.y_size; j++)
+            {
+                int index = i * mesh.y_size * mesh.z_size * densities +
+                            j * mesh.z_size * densities +
+                            z_begin * densities;
+                for (int d = 0; d < densities; d++)
+                {
+                    if (dirichlet_activation_vector[d] == true)
+                    {
+                        p_density_vectors[index + d] = dirichlet_value_vectors[index + d];
+                    }
+                }
+                index = i * mesh.y_size * mesh.z_size * densities +
+                        j * mesh.z_size * densities +
+                        z_end * densities;
+                for (int d = 0; d < densities; d++)
+                {
+                    if (dirichlet_activation_vector[d] == true)
+                    {
+                        p_density_vectors[index + d] = dirichlet_value_vectors[index + d];
+                    }
+                }
+            }
+        }
+    }
+    return;
+}
+
 	}
 
 	void Microenvironment::resize_voxels(int new_number_of_voxes)
@@ -818,12 +909,12 @@ namespace BioFVM
 
 	Voxel &Microenvironment::voxels(int voxel_index)
 	{
-		//return mesh.voxels[voxel_index];
+		return mesh.voxels[voxel_index];
 	}
 
 	Voxel &Microenvironment::voxels(int x, int y, int z)
 	{
-		return (*(mesh.voxels[x]))[y*mesh.z_size+z];
+		return mesh.voxels[((x*mesh.y_size) + y)*mesh.z_size + z];
 	}
 
 	std::vector<int> Microenvironment::nearest_cartesian_indices(std::vector<double> &position)
@@ -875,11 +966,14 @@ namespace BioFVM
 		{
 			return (*p_density_vectors)[n];
 		}*/
-	std::vector<double> &Microenvironment::density_vector(int x, int y, int z)
+	std::vector<double>::iterator Microenvironment::density_vector(int x, int y, int z)
 	{
 		/*
 		int index = x*mesh.y_size*mesh.z_size*num_densities + y*mesh.z_size*num_densities + z*num_densities;
 		return p_density_vectors[];*/
+		int index = voxel_index(x,y,z) * number_of_densities();
+		
+		return p_density_vectors.begin() + index; 
 	}
 
 
@@ -1332,10 +1426,11 @@ void Microenvironment::simulate_diffusion_decay( double dt, int mpi_Size, int mp
 		microenvironment.mesh.units = default_microenvironment_options.spatial_units;
 
 		// set the initial oxygenation to 38 mmHg (a typical normoxic tissue value of 5% O2)
+		/*
 		for (int i = 0; i < microenvironment.mesh.x_size; i++)
 			for (int j = 0; j < microenvironment.mesh.y_size; j++)
 				for (int k = 0; k < microenvironment.mesh.z_size; k++)
-					microenvironment.density_vector(i,j,k) = default_microenvironment_options.Dirichlet_condition_vector;
+					microenvironment.density_vector(i,j,k) = default_microenvironment_options.Dirichlet_condition_vector;*/
 
 
 		if (default_microenvironment_options.outer_Dirichlet_conditions == true)
@@ -1373,5 +1468,46 @@ void Microenvironment::simulate_diffusion_decay( double dt, int mpi_Size, int mp
 		microenvironment.display_information(std::cout);
 		return;
 	}
+
+	bool Microenvironment::compare_microenvironment(Microenvironment reference) {
+		bool identical = true;
+		//bool* identicals = new bool[cart_topo.mpi_dims[1]];
+		//int rank = cart_topo.mpi_coords[1];
+		//int size = cart_topo.mpi_dims[1];
+		int x_size = mesh.x_coordinates.size();
+		int y_size = mesh.y_coordinates.size();
+		int z_size = mesh.z_coordinates.size();
+		if (x_size != reference.mesh.x_coordinates.size() || 
+			y_size != reference.mesh.y_coordinates.size() ||
+			z_size != reference.mesh.z_coordinates.size())
+			return false;
+		if (number_of_densities() != reference.number_of_densities()){
+			return false;
+		}
+		int num_densities = number_of_densities();
+		#pragma omp parallel for collapse(3)
+		for (int i = 0; i < x_size; i++)
+		{
+			for (int j = 0; j < y_size; j++)
+			{
+				for (int k = 0; k < z_size; k++)
+				{
+					
+					int index = voxel_index(i, j, k) * num_densities;
+					int ref_index = reference.voxel_index(i,j,k) * num_densities;
+					//(*M.p_density_vectors)[n] = densities;
+					for (int d = 0; d < num_densities; ++d)
+					{
+						if (reference.p_density_vectors[ref_index + d] != p_density_vectors[index+d])
+							#pragma omp critical
+							identical = false;
+					}
+				}
+			}
+		}
+		
+		return identical;
+	}
+	
 
 };

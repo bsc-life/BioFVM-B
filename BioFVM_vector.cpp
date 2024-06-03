@@ -404,7 +404,8 @@ namespace BioFVM
 		}
 		return;
 	}
-	//Jose Begin
+	
+	
 	void axpy(double *y, double &a, double *x, int size)
 	{
 		for (int i = 0; i < size; i++)

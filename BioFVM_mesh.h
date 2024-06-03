@@ -125,7 +125,7 @@ namespace BioFVM
 		std::vector<double> bounding_box;
 
 		//std::vector<Voxel> voxels; Jose
-		std::vector<std::vector<Voxel>*> voxels;
+		std::vector<Voxel> voxels;
 		std::vector<Voxel_Face> voxel_faces;
 		// each voxel[k] has a list of connected voxels -- helpful for some numerical methods
 		std::vector<std::vector<int>> connected_voxel_indices;		  // This gives local indices of connected Voxels
@@ -198,6 +198,7 @@ namespace BioFVM
 		int x_size;
 		int y_size;
 		int z_size;
+		int n_substrates; 
 
 		double local_x_start;
 		double local_y_start;

@@ -113,7 +113,8 @@ namespace BioFVM
     // y = y - a.*x
     void naxpy(std::vector<double> *y, std::vector<double> &a, std::vector<double> &x);
 
-    // Jose begin
+    //Set of functions to operate with the BioFVM-B microenvironment: uses as input double* y
+    //BioFVM-B begin
     void axpy(std::vector<double> *y, double &a, std::vector<double> &x, int size);
     // y = y + a.*x
     void axpy(std::vector<double> *y, std::vector<double> &a, std::vector<double> &x, int size);
@@ -131,22 +132,8 @@ namespace BioFVM
     void naxpy(double *y, double &a, double *x, int size);
     // y = y - a.*x
     void naxpy(double *y, std::vector<double> &a, double *x, int size);
-    // Jose end
-
-    /* I may cut these from the final version */
-    /* CLEANUP BEFORE RELEASE */
-
-    // y = y + a.*x  ; y = y ./ d
-    void axpy_div(std::vector<double> *y, std::vector<double> &a, std::vector<double> &x, std::vector<double> &d);
-
-    // y = y + a1.*x1 + a2.*x2
-    void double_axpy(std::vector<double> *y, std::vector<double> &a1, std::vector<double> &a2, std::vector<double> &x1, std::vector<double> &x2);
-    // y = y + a.*(x1 + x2)
-    void double_axpy(std::vector<double> *y, std::vector<double> &a, std::vector<double> &x1, std::vector<double> &x2);
-    // y = y + a.*(x1 + x2)  ; y = y./d
-    void double_axpy_div(std::vector<double> *y, std::vector<double> &a, std::vector<double> &x1, std::vector<double> &x2, std::vector<double> &d);
-    // y = y + a1.*x1 + a2.*x2  ; y = y./d
-    void double_axpy_div(std::vector<double> *y, std::vector<double> &a1, std::vector<double> &a2, std::vector<double> &x1, std::vector<double> &x2, std::vector<double> &d);
+    //BioFVM-B end
+    
 
     // turn a delimited character array (e.g., csv) into a vector of doubles
 

@@ -125,6 +125,8 @@ capVoxels:  ./examples/cap_voxels.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 	$(COMPILE_COMMAND) -o ./capVoxels ./examples/cap_voxels.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 testVS:  ./examples/test_VS.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 	$(COMPILE_COMMAND) -o ./test_VS ./examples/test_VS.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
+dirichlet_test:  ./examples/dirichlet_test.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
+	$(COMPILE_COMMAND) -o ./dirichlet_test ./examples/dirichlet_test.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 
 clean:
 	rm -f *.o

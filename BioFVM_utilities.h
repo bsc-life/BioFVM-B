@@ -63,14 +63,32 @@ namespace BioFVM
     void TIC(void);
     void TOC(void);
 
-    void TIC(int chrono);   // JOSE
-    double TOC(int chrono); // JOSE
+    /**
+    * @brief Initialize time clock indicated by the index
+    * @param chrono Index of the clock to be activated
+    */
+    void TIC(int chrono);
+    /**
+    * @brief Stop time clock indicated by the index and return its value
+    * @param chrono Index of the clock to be stoped
+    * @return Double value of the clock
+    * @details 
+      It uses the function stopwatch_value(int chrono) internally
+    */
+    double TOC(int chrono);
 
     void RUNTIME_TIC(void);
     void RUNTIME_TOC(void);
 
     double stopwatch_value(void);
-    double stopwatch_value(int chrono); // Jose
+    /**
+    * @brief Return the value of the clock
+    * @param chrono Index of the clock returned
+    * @return Double value of the clock
+    * @details 
+      It uses the function stopwatch_value(int chrono) internally
+    */
+    double stopwatch_value(int chrono);
     double runtime_stopwatch_value(void);
 
     // This returns the total number of seconds in successive TIC() / TOC() calls

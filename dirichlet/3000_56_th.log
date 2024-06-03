@@ -1,0 +1,25 @@
+Cartesian mesh resize desactivated 2
+Standard Microenvironment declaration finished
+Cartesian mesh resize desactivated 2
+Standard Microenvironment declaration finished
+Cartesian mesh resize desactivated 2
+Standard Microenvironment declaration finished
+Resize space uniform
+},{9},{10},{11},{12},{13},{14},{15},{16},{17},{18},{19},{20},{21},{22},{23},{24},{25},{26},{27},{28},{29},{30},{31},{32},{33},{34},{35},{36},{37},{38},{39},{40},{41},{42},{43},{44},{45},{46},{47},{48},{49},{50},{51},{52},{53},{54},{55}'
+  [host] OMP_STACKSIZE = '0'
+  [host] OMP_WAIT_POLICY = 'PASSIVE'
+  [host] OMP_THREAD_LIMIT = '4294967295'
+  [host] OMP_MAX_ACTIVE_LEVELS = '1'
+  [host] OMP_NUM_TEAMS = '0'
+  [host] OMP_TEAMS_THREAD_LIMIT = '0'
+  [all] OMP_CANCELLATION = 'FALSE'
+  [all] OMP_DEFAULT_DEVICE = '0'
+  [all] OMP_MAX_TASK_PRIORITY = '0'
+  [all] OMP_DISPLAY_AFFINITY = 'FALSE'
+  [host] OMP_AFFINITY_FORMAT = 'level %L thread %i affinity %A'
+  [host] OMP_ALLOCATOR = 'omp_default_mem_alloc'
+  [all] OMP_TARGET_OFFLOAD = 'DEFAULT'
+OPENMP DISPLAY ENVIRONMENT END
+slurmstepd: error: Detected 1 oom_kill event in StepId=1797139.8. Some of the step tasks have been OOM Killed.
+srun: error: gs19r1b66: task 0: Out Of Memory
+srun: Terminating StepId=1797139.8

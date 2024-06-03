@@ -116,6 +116,19 @@ namespace BioFVM
 		std::vector<std::vector<double>> thomas_denomz;
 		std::vector<std::vector<double>> thomas_cz;
 		bool diffusion_solver_setup_done;
+		bool diffusion_solver_vectorized_setup_done;
+		//Diffusion decay 3D solver optimization variables
+		int snd_data_size, snd_data_size_last;
+		int rcv_data_size, rcv_data_size_last;
+		bool last_iteration;
+		//Tridiagonal variables for vectorization
+        vector<double> gthomas_constant1, gthomas_constant1a, gthomas_constant2, gthomas_constant3, gthomas_constant3a;
+        vector<vector<double>> gthomas_denomx,gthomas_denomy, gthomas_denomz;
+        vector<vector<double>> gthomas_cx, gthomas_cy, gthomas_cz;
+        //Dirichlet conditions
+        int gvec_size;
+		
+		
 
 		// on "resize density" type operations, need to extend all of these
 
@@ -220,7 +233,7 @@ namespace BioFVM
 		void reset_all_gradient_vectors(void);
 
 		/*! access the density vector at  [ X(i),Y(j),Z(k) ] */
-		std::vector<double> &density_vector(int i, int j, int k);
+		std::vector<double>::iterator density_vector(int i, int j, int k);
 		/*! access the density vector at  [ X(i),Y(j),0 ]  -- helpful for 2-D problems */
 		std::vector<double> &density_vector(int i, int j);
 		/*! access the density vector at [x,y,z](n) */
@@ -251,6 +264,7 @@ namespace BioFVM
 		void update_dirichlet_node(int x, int y, int z, std::vector<double> &new_value);
 		void remove_dirichlet_node(int voxel_index);
 		void apply_dirichlet_conditions(int rank, int size);
+		void apply_dirichlet_conditions_v2(int rank, int size);
 
 		void set_substrate_dirichlet_activation(int substrate_index, bool new_value);
 
@@ -262,6 +276,7 @@ namespace BioFVM
 
 		//friend void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &M, double dt, int size, int rank, int granurality, int *coords, int *dims, MPI_Comm mpi_Cart_comm);
 		friend void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank, int granurality ,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); //-->Gaurav Saxena changed this prototype
+		friend void diffusion_decay_solver__constant_coefficients_LOD_3D_vectorized(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank, int granurality ,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); 
 		friend void diffusion_decay_solver__constant_coefficients_LOD_2D(Microenvironment &S, double dt);
 
 		friend void diffusion_decay_explicit_uniform_rates(Microenvironment &M, double dt);
@@ -274,6 +289,8 @@ namespace BioFVM
 		void write_to_xml(std::string xml_filename, std::string data_filename); // not yet written
 		void read_from_matlab(std::string filename);							// not yet written
 		void read_from_xml(std::string filename);								// not yet written
+
+		bool compare_microenvironment(Microenvironment reference);
 	};
 
 	extern void print_voxels_densities(Microenvironment& M, double dt, int size, int rank, int *coords, std::string *file_name ,int *dims, MPI_Comm mpi_Cart_comm );

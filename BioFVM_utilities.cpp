@@ -104,6 +104,7 @@ namespace BioFVM
 		time_span = std::chrono::duration_cast<std::chrono::duration<double>>(toc_time - tic_time);
 		return time_span.count();
 	}
+	
 	double stopwatch_value(int chrono)
 	{
 		static std::chrono::duration<double> time_span;

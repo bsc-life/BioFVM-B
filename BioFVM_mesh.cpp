@@ -214,7 +214,7 @@ namespace BioFVM
 
 	//Jose function
 	inline Voxel &Cartesian_Mesh::voxel_find(int x, int y, int z){
-		return (*(voxels[x]))[y*z_size+z];
+		return voxels[((x * y_size) + y)*z_size + z];
 	}
 
 	void General_Mesh::connect_voxels_faces_only(int i, int j, double SA) // done
@@ -442,13 +442,13 @@ namespace BioFVM
 		Voxel template_voxel;
 		template_voxel.volume = dV;
 		
-		//voxels.assign(x_coordinates.size() * y_coordinates.size() * z_coordinates.size(), template_voxel);
-		voxels.assign(x_coordinates.size(), new std::vector<Voxel> (y_coordinates.size() * z_coordinates.size(), template_voxel) ); //, std::vector<Voxel>(y_coordinates.size() * z_coordinates.size())* aux);
+		voxels.assign(x_coordinates.size() * y_coordinates.size() * z_coordinates.size(), template_voxel);
+		//voxels.assign(x_coordinates.size(), new std::vector<Voxel> (y_coordinates.size() * z_coordinates.size(), template_voxel) ); //, std::vector<Voxel>(y_coordinates.size() * z_coordinates.size())* aux);
 	
 
-		(*voxels[0])[0].center[0] = x_coordinates[0];
-		(*voxels[0])[0].center[1] = y_coordinates[0];
-		(*voxels[0])[0].center[2] = z_coordinates[0];
+		voxels[0].center[0] = x_coordinates[0];
+		voxels[0].center[1] = y_coordinates[0];
+		voxels[0].center[2] = z_coordinates[0];
 	}
 
 	void Cartesian_Mesh::create_voxel_faces(void)
@@ -654,9 +654,9 @@ namespace BioFVM
 		// Wrote it in a slightly readable form ---> Gaurav Saxena
 		// size of x/y/z_coordinates is same as local_x/y/z_nodes
 
-		return (k * y_coordinates.size() * x_coordinates.size() + j * x_coordinates.size() + i);
+		return ((i*y_size) +j)*z_size + k;
 	}
-
+	
 	std::vector<int> Cartesian_Mesh::cartesian_indices(int n)
 	{
 		std::vector<int> out(3, -1);
@@ -674,10 +674,11 @@ namespace BioFVM
 		return out;
 	}
 
+	// Equivalent of BioFVM_parallel.cpp: Cartesian_Mesh::resize but with no MPI. 
 	void Cartesian_Mesh::resize(double x_start, double x_end, double y_start, double y_end, double z_start, double z_end, int x_nodes, int y_nodes, int z_nodes)
 	{ 
 		std::cout << "Cartesian mesh resize desactivated 2" << std::endl;
-		
+		/*
 		int x_index;
         int y_index;
         int z_index;
@@ -685,12 +686,7 @@ namespace BioFVM
 		x_coordinates.assign(x_nodes, 0.0);
 		y_coordinates.assign(y_nodes, 0.0);
 		z_coordinates.assign(z_nodes, 0.0);
-		/*
-		cout << "Local nodes " << endl;
-        cout << "   X: " << x_nodes << endl
-             << "   Y: " << y_nodes << endl
-             << "   Z: " << z_nodes << endl;
-		*/
+
 		dx = (x_end - x_start) / ((double)x_nodes);
 		if (x_nodes < 2)
 		{
@@ -754,42 +750,37 @@ namespace BioFVM
 		Voxel template_voxel;
 		template_voxel.volume = dV;
 
-		//voxels.assign(x_coordinates.size() * y_coordinates.size() * z_coordinates.size(), template_voxel);
-		voxels.resize(x_coordinates.size());
+		voxels.assign(x_coordinates.size() * y_coordinates.size() * z_coordinates.size(), template_voxel);
 
 		//cout << "Rank have asign the mesh size" << endl;
         //cout << "size of voxels vector " << voxels.size() << endl;
-        //local_start_of_global_index = (dims[0] - coords[0] - 1) * x_nodes * local_y_nodes +
-        //                              (coords[1] * local_x_nodes) +
-        //                              (coords[2] * x_nodes * y_nodes * local_z_nodes);
+        int local_start_of_global_index = (coords[1] * z_nodes * y_nodes * local_x_nodes) +  //Imagine 3rd plate 'beginning' point (leftmost bottom point)
+                                      (dims[0]-coords[0]-1) * z_nodes * local_y_nodes +  //Imagine going up in 3rd plate
+                                      (coords[2] * local_z_nodes) ;
 
 		int n = 0;
-		for (int i = 0; i < x_coordinates.size(); i++)
-        {
-            //cout << "Generating plane x = " << i << endl;
-            //voxels[i] = new BioFVM::Voxel[y_coordinates.size() * z_coordinates.size()];
-            voxels[i] = new std::vector<Voxel> (y_coordinates.size() * z_coordinates.size(), template_voxel);
-            for (int j = 0; j < y_coordinates.size(); j++)
-            {
-                y_index = j * x_nodes;
-                int j_index = j * y_coordinates.size();
-                for (int k = 0; k < z_coordinates.size(); k++)
-                {
-                    z_index = k * x_nodes * y_nodes;
-                    // cout << "K " << k << " J " << j << " I " << i << " Address to consult " << (voxels_jose[i]) + (j * y_coordinates.size()) + k << endl;
+		#pragma omp parallel for collapse(3)
+		for( unsigned int i=0 ; i < x_coordinates.size() ; i++ )
+		{
+			for( unsigned int j=0 ; j < y_coordinates.size() ; j++ )
+			{
+				for( unsigned int k=0 ; k < z_coordinates.size() ; k++ )
+				{
+                    int z_index = k;
+				    int y_index = j * z_nodes;  
+				    int x_index = i * y_nodes * z_nodes;
                     BioFVM::Voxel aux; // = *((voxels_jose[i]) + (j * y_coordinates.size()) + k);
                     aux = template_voxel;
                     aux.center[0] = x_coordinates[i];
                     aux.center[1] = y_coordinates[j];
                     aux.center[2] = z_coordinates[k];
                     aux.mesh_index = n;                                                          // This now becomes the local index (Jose: will not be necessary)
-                    aux.global_mesh_index = 0 + z_index + y_index + i; // This is now the global index of the Voxel in the global mesh.
+                    aux.global_mesh_index = local_start_of_global_index + z_index + y_index + x_index; 
                     aux.volume = dV;
-                    //*((voxels[i]) + (j * y_coordinates.size()) + k) = aux;
-                    (*voxels[i])[j_index + k ] = aux;  
+                    voxels[n] = aux; 
                 }
             }
-        }
+        }*/
         //cout << "Voxels are generated" << endl;
 
 		// make connections

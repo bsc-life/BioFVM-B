@@ -1,0 +1,227 @@
+Cartesian mesh resize desactivated 2
+Standard Microenvironment declaration finished
+Cartesian mesh resize desactivated 2
+Standard Microenvironment declaration finished
+Cartesian mesh resize desactivated 2
+Standard Microenvironment declaration finished
+Resize space uniform
+Adding subsrate
+Substrate has been added
+
+Microenvironment summary: unnamed: 
+
+Mesh information: 
+type: uniform Cartesian
+Domain: [-2500,2500] none x [-2500,2500] none x [-2500,2500] none
+   resolution: dx = 10 noneDensities: (1 total)
+   substrate0:
+     units: dimensionless
+     diffusion coefficient: 100000 none^2 / none
+     decay rate: 0.1 none^-1
+     diffusion length scale: 1000 none
+
+
+Diffusion is going to start
+This value 100 should be 100
+Time v1 8272 us  vs. Time v2 646 us
+		Acceleration of 12.805X
+Time v1 8078 us  vs. Time v2 375 us
+		Acceleration of 21.5413X
+Time v1 6754 us  vs. Time v2 327 us
+		Acceleration of 20.6544X
+Time v1 6691 us  vs. Time v2 320 us
+		Acceleration of 20.9094X
+Time v1 6706 us  vs. Time v2 315 us
+		Acceleration of 21.2889X
+Time v1 6716 us  vs. Time v2 312 us
+		Acceleration of 21.5256X
+Time v1 6697 us  vs. Time v2 310 us
+		Acceleration of 21.6032X
+Time v1 6671 us  vs. Time v2 316 us
+		Acceleration of 21.1108X
+Time v1 6811 us  vs. Time v2 311 us
+		Acceleration of 21.9003X
+Time v1 6657 us  vs. Time v2 324 us
+		Acceleration of 20.5463X
+Time v1 6783 us  vs. Time v2 338 us
+		Acceleration of 20.068X
+Time v1 6718 us  vs. Time v2 331 us
+		Acceleration of 20.2961X
+Time v1 6679 us  vs. Time v2 327 us
+		Acceleration of 20.4251X
+Time v1 6662 us  vs. Time v2 327 us
+		Acceleration of 20.3731X
+Time v1 6629 us  vs. Time v2 325 us
+		Acceleration of 20.3969X
+Time v1 6696 us  vs. Time v2 323 us
+		Acceleration of 20.7307X
+Time v1 6677 us  vs. Time v2 330 us
+		Acceleration of 20.2333X
+Time v1 6613 us  vs. Time v2 339 us
+		Acceleration of 19.5074X
+Time v1 6650 us  vs. Time v2 323 us
+		Acceleration of 20.5882X
+Time v1 6631 us  vs. Time v2 325 us
+		Acceleration of 20.4031X
+Time v1 6677 us  vs. Time v2 327 us
+		Acceleration of 20.419X
+Time v1 6813 us  vs. Time v2 337 us
+		Acceleration of 20.2166X
+Time v1 6652 us  vs. Time v2 330 us
+		Acceleration of 20.1576X
+Time v1 6654 us  vs. Time v2 328 us
+		Acceleration of 20.2866X
+Time v1 6692 us  vs. Time v2 342 us
+		Acceleration of 19.5673X
+Time v1 6621 us  vs. Time v2 326 us
+		Acceleration of 20.3098X
+Time v1 6656 us  vs. Time v2 320 us
+		Acceleration of 20.8X
+Time v1 6656 us  vs. Time v2 315 us
+		Acceleration of 21.1302X
+Time v1 6666 us  vs. Time v2 315 us
+		Acceleration of 21.1619X
+Time v1 6665 us  vs. Time v2 321 us
+		Acceleration of 20.7632X
+Time v1 6642 us  vs. Time v2 322 us
+		Acceleration of 20.6273X
+Time v1 6600 us  vs. Time v2 317 us
+		Acceleration of 20.8202X
+Time v1 6617 us  vs. Time v2 297 us
+		Acceleration of 22.2795X
+Time v1 6684 us  vs. Time v2 318 us
+		Acceleration of 21.0189X
+Time v1 6688 us  vs. Time v2 299 us
+		Acceleration of 22.3679X
+Time v1 6742 us  vs. Time v2 320 us
+		Acceleration of 21.0688X
+Time v1 6623 us  vs. Time v2 298 us
+		Acceleration of 22.2248X
+Time v1 6691 us  vs. Time v2 303 us
+		Acceleration of 22.0825X
+Time v1 6702 us  vs. Time v2 302 us
+		Acceleration of 22.1921X
+Time v1 6719 us  vs. Time v2 323 us
+		Acceleration of 20.8019X
+Time v1 6910 us  vs. Time v2 316 us
+		Acceleration of 21.8671X
+Time v1 6644 us  vs. Time v2 324 us
+		Acceleration of 20.5062X
+Time v1 6664 us  vs. Time v2 318 us
+		Acceleration of 20.956X
+Time v1 6751 us  vs. Time v2 303 us
+		Acceleration of 22.2805X
+Time v1 6629 us  vs. Time v2 385 us
+		Acceleration of 17.2182X
+Time v1 6624 us  vs. Time v2 309 us
+		Acceleration of 21.4369X
+Time v1 6676 us  vs. Time v2 313 us
+		Acceleration of 21.3291X
+Time v1 6646 us  vs. Time v2 316 us
+		Acceleration of 21.0316X
+Time v1 6604 us  vs. Time v2 311 us
+		Acceleration of 21.2347X
+Time v1 6664 us  vs. Time v2 330 us
+		Acceleration of 20.1939X
+Time v1 6637 us  vs. Time v2 316 us
+		Acceleration of 21.0032X
+Time v1 6643 us  vs. Time v2 316 us
+		Acceleration of 21.0222X
+Time v1 6599 us  vs. Time v2 308 us
+		Acceleration of 21.4253X
+Time v1 6667 us  vs. Time v2 298 us
+		Acceleration of 22.3725X
+Time v1 6685 us  vs. Time v2 293 us
+		Acceleration of 22.8157X
+Time v1 6687 us  vs. Time v2 297 us
+		Acceleration of 22.5152X
+Time v1 6685 us  vs. Time v2 298 us
+		Acceleration of 22.4329X
+Time v1 6647 us  vs. Time v2 298 us
+		Acceleration of 22.3054X
+Time v1 6653 us  vs. Time v2 297 us
+		Acceleration of 22.4007X
+Time v1 6643 us  vs. Time v2 303 us
+		Acceleration of 21.9241X
+Time v1 6663 us  vs. Time v2 295 us
+		Acceleration of 22.5864X
+Time v1 6670 us  vs. Time v2 313 us
+		Acceleration of 21.3099X
+Time v1 6675 us  vs. Time v2 296 us
+		Acceleration of 22.5507X
+Time v1 6634 us  vs. Time v2 298 us
+		Acceleration of 22.2617X
+Time v1 6678 us  vs. Time v2 295 us
+		Acceleration of 22.6373X
+Time v1 6781 us  vs. Time v2 293 us
+		Acceleration of 23.1433X
+Time v1 6692 us  vs. Time v2 291 us
+		Acceleration of 22.9966X
+Time v1 6787 us  vs. Time v2 306 us
+		Acceleration of 22.1797X
+Time v1 6657 us  vs. Time v2 296 us
+		Acceleration of 22.4899X
+Time v1 6638 us  vs. Time v2 296 us
+		Acceleration of 22.4257X
+Time v1 6653 us  vs. Time v2 296 us
+		Acceleration of 22.4764X
+Time v1 6644 us  vs. Time v2 298 us
+		Acceleration of 22.2953X
+Time v1 6770 us  vs. Time v2 293 us
+		Acceleration of 23.1058X
+Time v1 6656 us  vs. Time v2 296 us
+		Acceleration of 22.4865X
+Time v1 6676 us  vs. Time v2 292 us
+		Acceleration of 22.863X
+Time v1 6619 us  vs. Time v2 296 us
+		Acceleration of 22.3615X
+Time v1 6670 us  vs. Time v2 305 us
+		Acceleration of 21.8689X
+Time v1 6637 us  vs. Time v2 296 us
+		Acceleration of 22.4223X
+Time v1 6738 us  vs. Time v2 294 us
+		Acceleration of 22.9184X
+Time v1 6620 us  vs. Time v2 298 us
+		Acceleration of 22.2148X
+Time v1 6695 us  vs. Time v2 297 us
+		Acceleration of 22.5421X
+Time v1 6662 us  vs. Time v2 290 us
+		Acceleration of 22.9724X
+Time v1 6676 us  vs. Time v2 297 us
+		Acceleration of 22.4781X
+Time v1 6632 us  vs. Time v2 294 us
+		Acceleration of 22.5578X
+Time v1 6629 us  vs. Time v2 290 us
+		Acceleration of 22.8586X
+Time v1 6680 us  vs. Time v2 303 us
+		Acceleration of 22.0462X
+Time v1 6624 us  vs. Time v2 313 us
+		Acceleration of 21.1629X
+Time v1 6672 us  vs. Time v2 352 us
+		Acceleration of 18.9545X
+Time v1 6613 us  vs. Time v2 305 us
+		Acceleration of 21.682X
+Time v1 6780 us  vs. Time v2 293 us
+		Acceleration of 23.1399X
+Time v1 6648 us  vs. Time v2 354 us
+		Acceleration of 18.7797X
+Time v1 6662 us  vs. Time v2 295 us
+		Acceleration of 22.5831X
+Time v1 6607 us  vs. Time v2 312 us
+		Acceleration of 21.1763X
+Time v1 6578 us  vs. Time v2 310 us
+		Acceleration of 21.2194X
+Time v1 6642 us  vs. Time v2 313 us
+		Acceleration of 21.2204X
+Time v1 6641 us  vs. Time v2 321 us
+		Acceleration of 20.6885X
+Time v1 6627 us  vs. Time v2 288 us
+		Acceleration of 23.0104X
+Time v1 6625 us  vs. Time v2 291 us
+		Acceleration of 22.7663X
+Time v1 6654 us  vs. Time v2 288 us
+		Acceleration of 23.1042X
+current simulated time: 0.1 minutes 
+interval wall time: 0 days, 0 hours, 0 minutes, and 59.0691 seconds 
+total wall time: 0 days, 0 hours, 0 minutes, and 59.0693 seconds 
+time: 0.1
