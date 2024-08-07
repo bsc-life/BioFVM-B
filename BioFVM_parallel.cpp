@@ -794,11 +794,11 @@ namespace BioFVM
     /* parallelized 																																						*/
     /*------------------------------------------------------------------------------------------*/
     // #define DENSITY(X,Y,Z) (*(M.p_density_vectors[(X)]))[(Y)*M.mesh.z_size+(Z)]
-    void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &M, double dt, int size, int rank, int granurality, int *coords, int *dims, MPI_Comm mpi_Cart_comm)
+    void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &M, double dt, int size, int rank, int *coords, int *dims, MPI_Comm mpi_Cart_comm)
     {
         
         std::ofstream file(M.timing_csv, std::ios::app);
-      
+        uint granurality = M.granurality;
         double t_strt_set, t_end_set;
         double t_strt_x, t_end_x;
         double t_strt_y, t_end_y;
@@ -1065,7 +1065,7 @@ namespace BioFVM
                     int index_dec = index; 
                     for (int d = 0; d < M.thomas_denomx[0].size(); d++)
                     {
-                        M.p_density_vectors[index + d] /= M.thomas_denomx[0][d];
+                        (*M.p_density_vectors)[index + d] /= M.thomas_denomx[0][d];
                     }
 
                     for (int i = 1; i < M.mesh.x_size; i++)
@@ -1075,13 +1075,13 @@ namespace BioFVM
                         // axpy(&(*M.p_density_vectors)[n], M.thomas_constant1, (*M.p_density_vectors)[n - M.thomas_i_jump]);
                         for (int d = 0; d < M.thomas_k_jump; d++)
                         {
-                            M.p_density_vectors[index_inc + d] += M.thomas_constant1[d] * M.p_density_vectors[index_dec + d];
+                            (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index_dec + d];
                         }
 
                         //(*M.p_density_vectors)[n] /= M.thomas_denomx[i];
                         for (int d = 0; d < M.thomas_k_jump; d++)
                         {
-                            M.p_density_vectors[index_inc + d] /= M.thomas_denomx[i][d];
+                            (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomx[i][d];
                         }
                         index_dec = index_inc;
                     }
@@ -1091,7 +1091,7 @@ namespace BioFVM
                     int x_end = M.mesh.x_size - 1;
                     int offset = step * M.snd_data_size;
                     MPI_Status status;
-                    MPI_Isend(&(M.p_density_vectors[x_end * M.thomas_i_jump + offset]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, mpi_Cart_comm, &send_req[step]);
+                    MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + offset]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, mpi_Cart_comm, &send_req[step]);
                 }
             }
             //Last iteration
@@ -1103,22 +1103,22 @@ namespace BioFVM
                     int index_dec = index; 
                     for (int d = 0; d < M.mesh.n_substrates; d++)
                     {
-                        M.p_density_vectors[index + d] /= M.thomas_denomx[0][d];
+                        (*M.p_density_vectors)[index + d] /= M.thomas_denomx[0][d];
                     }
 
                     for (int i = 1; i < M.mesh.x_size; i++)
                     {
                         int index_inc = index_dec + M.thomas_i_jump;
-                        // axpy(&(*M.p_density_vectors)[n], M.thomas_constant1, (*M.p_density_vectors)[n - M.thomas_i_jump]);
+                        // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, (*(*M.p_density_vectors))[n - M.thomas_i_jump]);
                         for (int d = 0; d < M.thomas_k_jump; d++)
                         {
-                            M.p_density_vectors[index_inc + d] += M.thomas_constant1[d] * M.p_density_vectors[index_dec + d];
+                            (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index_dec + d];
                         }
 
-                        //(*M.p_density_vectors)[n] /= M.thomas_denomx[i];
+                        //(*(*M.p_density_vectors))[n] /= M.thomas_denomx[i];
                         for (int d = 0; d < M.mesh.n_substrates; d++)
                         {
-                            M.p_density_vectors[index_inc + d] /= M.thomas_denomx[i][d];
+                            (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomx[i][d];
                         }
                         index_dec = index_inc;
                     }
@@ -1128,7 +1128,7 @@ namespace BioFVM
                     int x_end = M.mesh.x_size - 1;
                     int offset = granurality * M.snd_data_size;
                     MPI_Status status;
-                    MPI_Isend(&(M.p_density_vectors[x_end * M.thomas_i_jump + offset]), M.snd_data_size_last, MPI_DOUBLE, rank + 1, granurality, mpi_Cart_comm, &send_req[granurality]);
+                    MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + offset]), M.snd_data_size_last, MPI_DOUBLE, rank + 1, granurality, mpi_Cart_comm, &send_req[granurality]);
                     
                 }
             }
@@ -1151,32 +1151,32 @@ namespace BioFVM
                     #pragma omp parallel for
                     for (int index = initial_index; index < initial_index + M.snd_data_size; index += M.mesh.n_substrates)
                     {
-                        // axpy(&(*M.p_density_vectors)[n], M.thomas_constant1, block3d[k][j]);
+                        // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, block3d[k][j]);
                         int index_dec = index;
                         for (int d = 0; d < M.thomas_k_jump; d++)
                         {
-                            M.p_density_vectors[index + d] += M.thomas_constant1[d] * block3d[index + d];
+                            (*M.p_density_vectors)[index + d] += M.thomas_constant1[d] * block3d[index + d];
                         }
 
-                        //(*M.p_density_vectors)[n] /= M.thomas_denomx[0];
+                        //(*(*M.p_density_vectors))[n] /= M.thomas_denomx[0];
                         for (int d = 0; d < M.mesh.n_substrates; d++)
                         {
-                            M.p_density_vectors[index + d] /= M.thomas_denomx[0][d];
+                            (*M.p_density_vectors)[index + d] /= M.thomas_denomx[0][d];
                         }
 
                         for (int i = 1; i < M.mesh.x_size; i++)
                         {
 
                             int index_inc = index_dec + M.thomas_i_jump;
-                            // axpy(&(*M.p_density_vectors)[n], M.thomas_constant1, (*M.p_density_vectors)[n - M.thomas_i_jump]);
+                            // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, (*(*M.p_density_vectors))[n - M.thomas_i_jump]);
                             for (int d = 0; d < M.thomas_k_jump; d++)
                             {
-                                M.p_density_vectors[index_inc + d] += M.thomas_constant1[d] * M.p_density_vectors[index_dec + d];
+                                (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index_dec + d];
                             }
-                            //(*M.p_density_vectors)[n] /= M.thomas_denomx[i];
+                            //(*(*M.p_density_vectors))[n] /= M.thomas_denomx[i];
                             for (int d = 0; d < M.mesh.n_substrates; d++)
                             {
-                                M.p_density_vectors[index_inc + d] /= M.thomas_denomx[i][d];
+                                (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomx[i][d];
                             }
 
                             index_dec = index_inc;
@@ -1186,7 +1186,7 @@ namespace BioFVM
                     if (rank < (size - 1))
                     {
                         int x_end = M.mesh.x_size - 1;
-                        MPI_Isend(&(M.p_density_vectors[x_end * M.thomas_i_jump + initial_index]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, mpi_Cart_comm, &send_req[step]);
+                        MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + initial_index]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, mpi_Cart_comm, &send_req[step]);
                     }
                 }
                 if (M.last_iteration)
@@ -1196,32 +1196,32 @@ namespace BioFVM
                     #pragma omp parallel for
                     for (int index = initial_index; index < initial_index + M.snd_data_size_last; index += M.mesh.n_substrates)
                     {
-                        // axpy(&(*M.p_density_vectors)[n], M.thomas_constant1, block3d[k][j]);
+                        // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, block3d[k][j]);
                         int index_dec = index;
                         for (int d = 0; d < M.thomas_k_jump; d++)
                         {
-                            M.p_density_vectors[index + d] += M.thomas_constant1[d] * block3d[index + d];
+                            (*M.p_density_vectors)[index + d] += M.thomas_constant1[d] * block3d[index + d];
                         }
 
-                        //(*M.p_density_vectors)[n] /= M.thomas_denomx[0];
+                        //(*(*M.p_density_vectors))[n] /= M.thomas_denomx[0];
                         for (int d = 0; d < M.mesh.n_substrates; d++)
                         {
-                            M.p_density_vectors[index + d] /= M.thomas_denomx[0][d];
+                            (*M.p_density_vectors)[index + d] /= M.thomas_denomx[0][d];
                         }
 
                         for (int i = 1; i < M.mesh.x_size; i++)
                         {
 
                             int index_inc = index_dec + M.thomas_i_jump;
-                            // axpy(&(*M.p_density_vectors)[n], M.thomas_constant1, (*M.p_density_vectors)[n - M.thomas_i_jump]);
+                            // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, (*(*M.p_density_vectors))[n - M.thomas_i_jump]);
                             for (int d = 0; d < M.thomas_k_jump; d++)
                             {
-                                M.p_density_vectors[index_inc + d] += M.thomas_constant1[d] * M.p_density_vectors[index_dec + d];
+                                (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index_dec + d];
                             }
-                            //(*M.p_density_vectors)[n] /= M.thomas_denomx[i];
+                            //(*(*M.p_density_vectors))[n] /= M.thomas_denomx[i];
                             for (int d = 0; d < M.mesh.n_substrates; d++)
                             {
-                                M.p_density_vectors[index_inc + d] /= M.thomas_denomx[i][d];
+                                (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomx[i][d];
                             }
 
                             index_dec = index_inc;
@@ -1233,7 +1233,7 @@ namespace BioFVM
                     {
                         int x_end = M.mesh.x_size - 1;
                         MPI_Request aux;
-                        MPI_Isend(&(M.p_density_vectors[x_end * M.thomas_i_jump + initial_index]), M.snd_data_size_last, MPI_DOUBLE, rank + 1, granurality, mpi_Cart_comm, &send_req[granurality]);
+                        MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + initial_index]), M.snd_data_size_last, MPI_DOUBLE, rank + 1, granurality, mpi_Cart_comm, &send_req[granurality]);
                       
                     }
                 }
@@ -1259,17 +1259,17 @@ namespace BioFVM
                     {
 
                         int index_dec = index_aux - M.thomas_i_jump;
-                        // naxpy(&(*M.p_density_vectors)[n], M.thomas_cx[i], (*M.p_density_vectors)[n + M.thomas_i_jump]);
+                        // naxpy(&(*(*M.p_density_vectors))[n], M.thomas_cx[i], (*(*M.p_density_vectors))[n + M.thomas_i_jump]);
                         for (int d = 0; d < M.thomas_k_jump; d++)
                         {
-                            M.p_density_vectors[index_dec + d] -= M.thomas_cx[i][d] * M.p_density_vectors[index_aux + d];
+                            (*M.p_density_vectors)[index_dec + d] -= M.thomas_cx[i][d] * (*M.p_density_vectors)[index_aux + d];
                         }
                         index_aux = index_dec;
                     }
                 }
                 if (size > 1) {
                     MPI_Request aux;
-                    MPI_Isend(&(M.p_density_vectors[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, mpi_Cart_comm, &send_req[step]);
+                    MPI_Isend(&((*M.p_density_vectors)[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, mpi_Cart_comm, &send_req[step]);
                 }
             }
 
@@ -1284,17 +1284,17 @@ namespace BioFVM
                     {
 
                         int index_dec = index_aux - M.thomas_i_jump;
-                        // naxpy(&(*M.p_density_vectors)[n], M.thomas_cx[i], (*M.p_density_vectors)[n + M.thomas_i_jump]);
+                        // naxpy(&(*(*M.p_density_vectors))[n], M.thomas_cx[i], (*(*M.p_density_vectors))[n + M.thomas_i_jump]);
                         for (int d = 0; d < M.thomas_k_jump; d++)
                         {
-                            M.p_density_vectors[index_dec + d] -= M.thomas_cx[i][d] * M.p_density_vectors[index_aux + d];
+                            (*M.p_density_vectors)[index_dec + d] -= M.thomas_cx[i][d] * (*M.p_density_vectors)[index_aux + d];
                         }
                         index_aux = index_dec;
                     }
                 }
                 if (size > 1) {
                     MPI_Request aux;
-                    MPI_Isend(&(M.p_density_vectors[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, mpi_Cart_comm, &send_req[granurality]);
+                    MPI_Isend(&((*M.p_density_vectors)[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, mpi_Cart_comm, &send_req[granurality]);
                     //cout << "Rank " << rank << " has send" << endl;
                 }
             
@@ -1322,17 +1322,17 @@ namespace BioFVM
                     int index_3d = index_3d_initial + offset;
                     for (int d = 0; d < M.thomas_k_jump; d++)
                     {
-                        M.p_density_vectors[index_aux + d] -= M.thomas_cx[M.mesh.x_size - 1][d] * block3d[index_3d + d];
+                        (*M.p_density_vectors)[index_aux + d] -= M.thomas_cx[M.mesh.x_size - 1][d] * block3d[index_3d + d];
                     }
 
                     for (int i = M.mesh.x_size - 2; i >= 0; i--)
                     {
 
                         int index_dec = index_aux - M.thomas_i_jump;
-                        // naxpy(&(*M.p_density_vectors)[n], M.thomas_cx[i], (*M.p_density_vectors)[n + M.thomas_i_jump]);
+                        // naxpy(&(*(*M.p_density_vectors))[n], M.thomas_cx[i], (*(*M.p_density_vectors))[n + M.thomas_i_jump]);
                         for (int d = 0; d < M.thomas_k_jump; d++)
                         {
-                            M.p_density_vectors[index_dec + d] -= M.thomas_cx[i][d] * M.p_density_vectors[index_aux + d];
+                            (*M.p_density_vectors)[index_dec + d] -= M.thomas_cx[i][d] * (*M.p_density_vectors)[index_aux + d];
                         }
                         index_aux = index_dec;
                         
@@ -1341,7 +1341,7 @@ namespace BioFVM
                 if (rank > 0)
                 {
                     MPI_Request aux;
-                    MPI_Isend(&(M.p_density_vectors[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, mpi_Cart_comm, &send_req[step]);
+                    MPI_Isend(&((*M.p_density_vectors)[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, mpi_Cart_comm, &send_req[step]);
                     // cout << "Rank " << rank << " has send" << endl;
                 }
             }
@@ -1356,20 +1356,20 @@ namespace BioFVM
                     int index_aux = initial_index + offset;
                     //int index = j * M.thomas_j_jump + k * M.thomas_k_jump + (M.mesh.x_coordinates.size() - 1) * M.thomas_i_jump;
                     int index_3d = index_3d_initial + offset;
-                    // naxpy(&(*M.p_density_vectors)[n], M.thomas_cx[M.mesh.x_coordinates.size() - 1], block3d[k][j]);
+                    // naxpy(&(*(*M.p_density_vectors))[n], M.thomas_cx[M.mesh.x_coordinates.size() - 1], block3d[k][j]);
                     for (int d = 0; d < M.thomas_k_jump; d++)
                     {
-                        M.p_density_vectors[index_aux + d] -= M.thomas_cx[M.mesh.x_size - 1][d] * block3d[index_3d + d];
+                        (*M.p_density_vectors)[index_aux + d] -= M.thomas_cx[M.mesh.x_size - 1][d] * block3d[index_3d + d];
                     }
 
                     for (int i = M.mesh.x_size - 2; i >= 0; i--)
                     {
 
                         int index_dec = index_aux - M.thomas_i_jump;
-                        // naxpy(&(*M.p_density_vectors)[n], M.thomas_cx[i], (*M.p_density_vectors)[n + M.thomas_i_jump]);
+                        // naxpy(&(*(*M.p_density_vectors))[n], M.thomas_cx[i], (*(*M.p_density_vectors))[n + M.thomas_i_jump]);
                         for (int d = 0; d < M.thomas_k_jump; d++)
                         {
-                            M.p_density_vectors[index_dec + d] -= M.thomas_cx[i][d] * M.p_density_vectors[index_aux + d];
+                            (*M.p_density_vectors)[index_dec + d] -= M.thomas_cx[i][d] * (*M.p_density_vectors)[index_aux + d];
                         }
                         index_aux = index_dec;
                         
@@ -1378,7 +1378,7 @@ namespace BioFVM
                 if (rank > 0)
                 {
                     MPI_Request aux;
-                    MPI_Isend(&(M.p_density_vectors[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, mpi_Cart_comm, &send_req[granurality]);
+                    MPI_Isend(&((*M.p_density_vectors)[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, mpi_Cart_comm, &send_req[granurality]);
                 }
             }
         }
@@ -1404,25 +1404,25 @@ namespace BioFVM
             {
 
                 int index = i * M.thomas_i_jump + k * M.thomas_k_jump;
-                //(*M.p_density_vectors)[n] /= M.thomas_denomy[0];
+                //(*(*M.p_density_vectors))[n] /= M.thomas_denomy[0];
                 for (int d = 0; d < M.mesh.n_substrates; d++)
                 {
-                    M.p_density_vectors[index + d] /= M.thomas_denomy[0][d];
+                    (*M.p_density_vectors)[index + d] /= M.thomas_denomy[0][d];
                 }
 
                 for (int j = 1; j < M.mesh.y_size; j++)
                 {
 
                     int index_inc = index + M.thomas_j_jump;
-                    // axpy(&(*M.p_density_vectors)[n], M.thomas_constant1, (*M.p_density_vectors)[n - M.thomas_j_jump]);
+                    // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, (*(*M.p_density_vectors))[n - M.thomas_j_jump]);
                     for (int d = 0; d < M.thomas_k_jump; d++)
                     {
-                        M.p_density_vectors[index_inc + d] += M.thomas_constant1[d] * M.p_density_vectors[index + d];
+                        (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index + d];
                     }
-                    //(*M.p_density_vectors)[n] /= M.thomas_denomy[j];
+                    //(*(*M.p_density_vectors))[n] /= M.thomas_denomy[j];
                     for (int d = 0; d < M.mesh.n_substrates; d++)
                     {
-                        M.p_density_vectors[index_inc + d] /= M.thomas_denomy[j][d];
+                        (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomy[j][d];
                     }
                     index = index_inc;
                 }
@@ -1434,10 +1434,10 @@ namespace BioFVM
                 {
 
                     int index_dec = index - M.thomas_j_jump;
-                    // naxpy(&(*M.p_density_vectors)[n], M.thomas_cy[j], (*M.p_density_vectors)[n + M.thomas_j_jump]);
+                    // naxpy(&(*(*M.p_density_vectors))[n], M.thomas_cy[j], (*(*M.p_density_vectors))[n + M.thomas_j_jump]);
                     for (int d = 0; d < M.thomas_k_jump; d++)
                     {
-                        M.p_density_vectors[index_dec + d] -= M.thomas_cy[j][d] * M.p_density_vectors[index + d];
+                        (*M.p_density_vectors)[index_dec + d] -= M.thomas_cy[j][d] * (*M.p_density_vectors)[index + d];
                     }
                     index = index_dec;
                 }
@@ -1466,10 +1466,10 @@ namespace BioFVM
             {
 
                 int index = i * M.thomas_i_jump + j * M.thomas_j_jump;
-                //(*M.p_density_vectors)[n] /= M.thomas_denomz[0];
+                //(*(*M.p_density_vectors))[n] /= M.thomas_denomz[0];
                 for (int d = 0; d < M.mesh.n_substrates; d++)
                 {
-                    M.p_density_vectors[index + d] /= M.thomas_denomz[0][d];
+                    (*M.p_density_vectors)[index + d] /= M.thomas_denomz[0][d];
                 }
 
                 // should be an empty loop if mesh.z_coordinates.size() < 2
@@ -1477,15 +1477,15 @@ namespace BioFVM
                 {
 
                     int index_inc = index + M.thomas_k_jump;
-                    // axpy(&(*M.p_density_vectors)[n], M.thomas_constant1, (*M.p_density_vectors)[n - M.thomas_k_jump]);
+                    // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, (*(*M.p_density_vectors))[n - M.thomas_k_jump]);
                     for (int d = 0; d < M.thomas_k_jump; d++)
                     {
-                        M.p_density_vectors[index_inc + d] += M.thomas_constant1[d] * M.p_density_vectors[index + d];
+                        (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index + d];
                     }
-                    //(*M.p_density_vectors)[n] /= M.thomas_denomz[k];
+                    //(*(*M.p_density_vectors))[n] /= M.thomas_denomz[k];
                     for (int d = 0; d < M.mesh.n_substrates; d++)
                     {
-                        M.p_density_vectors[index_inc + d] /= M.thomas_denomz[k][d];
+                        (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomz[k][d];
                     }
 
                     index = index_inc;
@@ -1499,10 +1499,10 @@ namespace BioFVM
                 {
 
                     int index_dec = index - M.thomas_k_jump;
-                    // naxpy(&(*M.p_density_vectors)[n], M.thomas_cz[k], (*M.p_density_vectors)[n + M.thomas_k_jump]);
+                    // naxpy(&(*(*M.p_density_vectors))[n], M.thomas_cz[k], (*(*M.p_density_vectors))[n + M.thomas_k_jump]);
                     for (int d = 0; d < M.thomas_k_jump; d++)
                     {
-                        M.p_density_vectors[index_dec + d] -= M.thomas_cz[k][d] * M.p_density_vectors[index + d];
+                        (*M.p_density_vectors)[index_dec + d] -= M.thomas_cz[k][d] * (*M.p_density_vectors)[index + d];
                     }
                     index = index_dec;
                 }
@@ -1545,7 +1545,8 @@ namespace BioFVM
         return (a * b) / gcd(a, b);
     }
 
-    void diffusion_decay_solver__constant_coefficients_LOD_3D_vectorized(Microenvironment &M, double dt, int size, int rank, int granurality, int *coords, int *dims, MPI_Comm mpi_Cart_comm){
+    void diffusion_decay_solver__constant_coefficients_LOD_3D_vectorized(Microenvironment &M, double dt, int size, int rank, int *coords, int *dims, MPI_Comm mpi_Cart_comm){
+        uint granurality = M.granurality;
         MPI_Request send_req[granurality], recv_req[granurality];
         
         /*
@@ -1837,23 +1838,23 @@ namespace BioFVM
                     int gd = index%M.gvec_size;
 
                     __m256d denomx1 = _mm256_loadu_pd(&M.gthomas_denomx[0][gd]);
-                    __m256d density1 = _mm256_loadu_pd(&M.p_density_vectors[index]);
+                    __m256d density1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index]);
                     __m256d aux1 = _mm256_div_pd(density1, denomx1);
 
-                    _mm256_storeu_pd(&M.p_density_vectors[index], aux1);
+                    _mm256_storeu_pd(&(*M.p_density_vectors)[index], aux1);
 
                     for (int i = 1; i < M.mesh.x_size; i++)
                     {
                         int index_inc = index_dec + M.thomas_i_jump;
                         __m256d constant1 = _mm256_loadu_pd(&M.gthomas_constant1[gd]);
-                        __m256d density_curr1 = _mm256_loadu_pd(&M.p_density_vectors[index_dec ]);
-                        __m256d density_inc1 = _mm256_loadu_pd(&M.p_density_vectors[index_inc]);
+                        __m256d density_curr1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_dec ]);
+                        __m256d density_inc1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_inc]);
                         __m256d denomy1 = _mm256_loadu_pd(&M.gthomas_denomx[i][gd]);
                     
                         density_curr1 = _mm256_fmadd_pd(constant1, density_curr1, density_inc1);
                 
                         density_curr1 = _mm256_div_pd(density_curr1, denomy1);
-                        _mm256_storeu_pd(&M.p_density_vectors[index_inc], density_curr1);
+                        _mm256_storeu_pd(&(*M.p_density_vectors)[index_inc], density_curr1);
                         
                         index_dec = index_inc;
                     }
@@ -1868,17 +1869,17 @@ namespace BioFVM
                     int index_dec = index;
                     int d = index % M.mesh.n_substrates; 
 
-                    M.p_density_vectors[index] /= M.thomas_denomx[0][d];
+                    (*M.p_density_vectors)[index] /= M.thomas_denomx[0][d];
 
                     for (int i = 1; i < M.mesh.x_size; i++)
                     {
                         int index_inc = index_dec + M.thomas_i_jump;
                         // axpy(&(*M.microenvironment)[n], M.thomas_constant1, (*M.microenvironment)[n - M.i_jump]);
-                        M.p_density_vectors[index_inc] += M.thomas_constant1[d] * M.p_density_vectors[index_dec];
+                        (*M.p_density_vectors)[index_inc] += M.thomas_constant1[d] * (*M.p_density_vectors)[index_dec];
                         
                         //(*M.microenvironment)[n] /= M.thomas_denomx[i];
                         
-                        M.p_density_vectors[index_inc] /= M.thomas_denomx[i][d];
+                        (*M.p_density_vectors)[index_inc] /= M.thomas_denomx[i][d];
                         
                         index_dec = index_inc;
                     }
@@ -1888,7 +1889,7 @@ namespace BioFVM
                     int x_end = M.mesh.x_size - 1;
                     int offset = step * M.snd_data_size;
                     MPI_Status status;
-                    MPI_Isend(&(M.p_density_vectors[x_end * M.thomas_i_jump + offset]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, MPI_COMM_WORLD, &send_req[step]);
+                    MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + offset]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, MPI_COMM_WORLD, &send_req[step]);
                 }
             }
             //Last iteration
@@ -1900,7 +1901,7 @@ namespace BioFVM
                     int index_dec = index; 
                     for (int d = 0; d < M.mesh.n_substrates; d++)
                     {
-                        M.p_density_vectors[index + d] /= M.thomas_denomx[0][d];
+                        (*M.p_density_vectors)[index + d] /= M.thomas_denomx[0][d];
                     }
 
                     for (int i = 1; i < M.mesh.x_size; i++)
@@ -1909,13 +1910,13 @@ namespace BioFVM
                         // axpy(&(*M.microenvironment)[n], M.thomas_constant1, (*M.microenvironment)[n - M.i_jump]);
                         for (int d = 0; d < M.mesh.n_substrates; d++)
                         {
-                            M.p_density_vectors[index_inc + d] += M.thomas_constant1[d] * M.p_density_vectors[index_dec + d];
+                            (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index_dec + d];
                         }
 
                         //(*M.microenvironment)[n] /= M.thomas_denomx[i];
                         for (int d = 0; d < M.mesh.n_substrates; d++)
                         {
-                            M.p_density_vectors[index_inc + d] /= M.thomas_denomx[i][d];
+                            (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomx[i][d];
                         }
                         index_dec = index_inc;
                     }
@@ -1925,7 +1926,7 @@ namespace BioFVM
                     int x_end = M.mesh.x_size - 1;
                     int offset = granurality * M.snd_data_size;
                     MPI_Status status;
-                    MPI_Isend(&(M.p_density_vectors[x_end * M.thomas_i_jump + offset]), M.snd_data_size_last, MPI_DOUBLE, rank + 1, granurality, MPI_COMM_WORLD, &send_req[granurality]);
+                    MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + offset]), M.snd_data_size_last, MPI_DOUBLE, rank + 1, granurality, MPI_COMM_WORLD, &send_req[granurality]);
                     
                 }
             }
@@ -1954,7 +1955,7 @@ namespace BioFVM
                         int index_dec = index;
                         int gd = index%M.gvec_size;
                         __m256d constant1 = _mm256_loadu_pd(&M.gthomas_constant1[gd]);
-                        __m256d density_curr1 = _mm256_loadu_pd(&M.p_density_vectors[index]);
+                        __m256d density_curr1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index]);
                         __m256d density_inc1 = _mm256_loadu_pd(&block3d[index]);
                         __m256d denomy1 = _mm256_loadu_pd(&M.gthomas_denomx[0][gd]);
                 
@@ -1963,20 +1964,20 @@ namespace BioFVM
             
                         //_mm256_storeu_pd(&microenvironment[index_inc + zd], density_curr);
             
-                        //(*M.p_density_vectors)[n] /= M.thomas_denomy[j];
+                        //(*(*M.p_density_vectors))[n] /= M.thomas_denomy[j];
                         //Fer unrolling aqui
                 
                         //__m256d density = _mm256_loadu_pd(&microenvironment[index_inc + zd]);
                         density_curr1 = _mm256_div_pd(density_curr1, denomy1);
-                        _mm256_storeu_pd(&M.p_density_vectors[index], density_curr1);
+                        _mm256_storeu_pd(&(*M.p_density_vectors)[index], density_curr1);
 
                         for (int i = 1; i < M.mesh.x_size; i++)
                         {
 
                             int index_inc = index_dec + M.thomas_i_jump;
                             __m256d constant1 = _mm256_loadu_pd(&M.gthomas_constant1[gd]);
-                            __m256d density_curr1 = _mm256_loadu_pd(&M.p_density_vectors[index_dec ]);
-                            __m256d density_inc1 = _mm256_loadu_pd(&M.p_density_vectors[index_inc]);
+                            __m256d density_curr1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_dec ]);
+                            __m256d density_inc1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_inc]);
                             __m256d denomy1 = _mm256_loadu_pd(&M.gthomas_denomx[i][gd]);
                     
 
@@ -1984,12 +1985,12 @@ namespace BioFVM
                 
                             //_mm256_storeu_pd(&microenvironment[index_inc + zd], density_curr);
                 
-                            //(*M.p_density_vectors)[n] /= M.thomas_denomy[j];
+                            //(*(*M.p_density_vectors))[n] /= M.thomas_denomy[j];
                             //Fer unrolling aqui
                    
                             //__m256d density = _mm256_loadu_pd(&microenvironment[index_inc + zd]);
                             density_curr1 = _mm256_div_pd(density_curr1, denomy1);
-                            _mm256_storeu_pd(&M.p_density_vectors[index_inc], density_curr1);
+                            _mm256_storeu_pd(&(*M.p_density_vectors)[index_inc], density_curr1);
 
                             index_dec = index_inc;
                         }
@@ -2007,18 +2008,18 @@ namespace BioFVM
                         int index_dec = index;
                         int d = index % M.mesh.n_substrates; 
                         
-                        M.p_density_vectors[index] += M.thomas_constant1[d] * block3d[index];
-                        M.p_density_vectors[index] /= M.thomas_denomx[0][d];
+                        (*M.p_density_vectors)[index] += M.thomas_constant1[d] * block3d[index];
+                        (*M.p_density_vectors)[index] /= M.thomas_denomx[0][d];
                         
                         for (int i = 1; i < M.mesh.x_size; i++)
                         {
                             int index_inc = index_dec + M.thomas_i_jump;
                             // axpy(&(*M.microenvironment)[n], M.thomas_constant1, (*M.microenvironment)[n - M.i_jump]);
                         
-                            M.p_density_vectors[index_inc] += M.thomas_constant1[d] * M.p_density_vectors[index_dec];
+                            (*M.p_density_vectors)[index_inc] += M.thomas_constant1[d] * (*M.p_density_vectors)[index_dec];
                         
                             //(*M.microenvironment)[n] /= M.thomas_denomx[i];
-                            M.p_density_vectors[index_inc] /= M.thomas_denomx[i][d];
+                            (*M.p_density_vectors)[index_inc] /= M.thomas_denomx[i][d];
                             index_dec = index_inc;
                         }
                     }
@@ -2027,7 +2028,7 @@ namespace BioFVM
                     if (rank < (size - 1))
                     {
                         int x_end = M.mesh.x_size - 1;
-                        MPI_Isend(&(M.p_density_vectors[x_end * M.thomas_i_jump + initial_index]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, MPI_COMM_WORLD, &send_req[step]);
+                        MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + initial_index]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, MPI_COMM_WORLD, &send_req[step]);
                     }
                 }
                 if (M.snd_data_size_last != 0)
@@ -2041,13 +2042,13 @@ namespace BioFVM
                         int index_dec = index;
                         for (int d = 0; d < M.thomas_k_jump; d++)
                         {
-                            M.p_density_vectors[index + d] += M.thomas_constant1[d] * block3d[index + d];
+                            (*M.p_density_vectors)[index + d] += M.thomas_constant1[d] * block3d[index + d];
                         }
 
                         //(*M.microenvironment)[n] /= M.thomas_denomx[0];
                         for (int d = 0; d < M.mesh.n_substrates; d++)
                         {
-                            M.p_density_vectors[index + d] /= M.thomas_denomx[0][d];
+                            (*M.p_density_vectors)[index + d] /= M.thomas_denomx[0][d];
                         }
 
                         for (int i = 1; i < M.mesh.x_size; i++)
@@ -2057,12 +2058,12 @@ namespace BioFVM
                             // axpy(&(*M.microenvironment)[n], M.thomas_constant1, (*M.microenvironment)[n - M.i_jump]);
                             for (int d = 0; d < M.mesh.n_substrates; d++)
                             {
-                                M.p_density_vectors[index_inc + d] += M.thomas_constant1[d] * M.p_density_vectors[index_dec + d];
+                                (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index_dec + d];
                             }
                             //(*M.microenvironment)[n] /= M.thomas_denomx[i];
                             for (int d = 0; d < M.mesh.n_substrates; d++)
                             {
-                                M.p_density_vectors[index_inc + d] /= M.thomas_denomx[i][d];
+                                (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomx[i][d];
                             }
 
                             index_dec = index_inc;
@@ -2074,7 +2075,7 @@ namespace BioFVM
                     {
                         int x_end = M.mesh.x_size - 1;
                         MPI_Request aux;
-                        MPI_Isend(&(M.p_density_vectors[x_end * M.thomas_i_jump + initial_index]), M.snd_data_size_last, MPI_DOUBLE, rank + 1, granurality, MPI_COMM_WORLD, &send_req[granurality]);
+                        MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + initial_index]), M.snd_data_size_last, MPI_DOUBLE, rank + 1, granurality, MPI_COMM_WORLD, &send_req[granurality]);
                       
                     }
                 }
@@ -2105,12 +2106,12 @@ namespace BioFVM
 
                         int index_dec = index_aux - M.thomas_i_jump;
                         __m256d cy1 = _mm256_loadu_pd(&M.gthomas_cx[i][gd]);
-                        __m256d density_curr1 = _mm256_loadu_pd(&M.p_density_vectors[index_aux]);
-                        __m256d density_dec1 = _mm256_loadu_pd(&M.p_density_vectors[index_dec]);
+                        __m256d density_curr1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_aux]);
+                        __m256d density_dec1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_dec]);
 
                         density_curr1 = _mm256_fnmadd_pd(cy1, density_curr1, density_dec1);
 
-                        _mm256_storeu_pd(&M.p_density_vectors[index_dec], density_curr1);
+                        _mm256_storeu_pd(&(*M.p_density_vectors)[index_dec], density_curr1);
                         index_aux = index_dec;
                     }
                 }
@@ -2124,7 +2125,7 @@ namespace BioFVM
                     {
                         int index_dec = index_aux - M.thomas_i_jump;
                         // naxpy(&(*M.microenvironment)[n], M.thomas_cx[i], (*M.microenvironment)[n + M.i_jump]);
-                        M.p_density_vectors[index_dec] -= M.thomas_cx[i][d] * M.p_density_vectors[index_aux];
+                        (*M.p_density_vectors)[index_dec] -= M.thomas_cx[i][d] * (*M.p_density_vectors)[index_aux];
                         
                         index_aux = index_dec;
                     }
@@ -2132,7 +2133,7 @@ namespace BioFVM
 
                 if (size > 1) {
                     MPI_Request aux;
-                    MPI_Isend(&(M.p_density_vectors[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, MPI_COMM_WORLD, &send_req[step]);
+                    MPI_Isend(&((*M.p_density_vectors)[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, MPI_COMM_WORLD, &send_req[step]);
                 }
             }
 
@@ -2150,14 +2151,14 @@ namespace BioFVM
                         // naxpy(&(*M.microenvironment)[n], M.thomas_cx[i], (*M.microenvironment)[n + M.i_jump]);
                         for (int d = 0; d < M.thomas_k_jump; d++)
                         {
-                            M.p_density_vectors[index_dec + d] -= M.thomas_cx[i][d] * M.p_density_vectors[index_aux + d];
+                            (*M.p_density_vectors)[index_dec + d] -= M.thomas_cx[i][d] * (*M.p_density_vectors)[index_aux + d];
                         }
                         index_aux = index_dec;
                     }
                 }
                 if (size > 1) {
                     MPI_Request aux;
-                    MPI_Isend(&(M.p_density_vectors[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, MPI_COMM_WORLD, &send_req[granurality]);
+                    MPI_Isend(&((*M.p_density_vectors)[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, MPI_COMM_WORLD, &send_req[granurality]);
                     //cout << "Rank " << rank << " has send" << endl;
                 }
             
@@ -2187,24 +2188,24 @@ namespace BioFVM
                     int index_3d = index - last_xplane;
                     int gd = index_3d%M.gvec_size;
                     __m256d cy1 = _mm256_loadu_pd(&M.gthomas_cx[M.mesh.x_size-1][gd]);
-                    __m256d density_curr1 = _mm256_loadu_pd(&M.p_density_vectors[index_aux]);
+                    __m256d density_curr1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_aux]);
                     __m256d density_dec1 = _mm256_loadu_pd(&block3d[index_3d]);
 
                     density_curr1 = _mm256_fnmadd_pd(cy1, density_curr1, density_dec1);
 
-                    _mm256_storeu_pd(&M.p_density_vectors[index_aux], density_curr1);
+                    _mm256_storeu_pd(&(*M.p_density_vectors)[index_aux], density_curr1);
 
                     for (int i = M.mesh.x_size - 2; i >= 0; i--)
                     {
 
                         int index_dec = index_aux - M.thomas_i_jump;
                         __m256d cy1 = _mm256_loadu_pd(&M.gthomas_cx[i][gd]);
-                        __m256d density_curr1 = _mm256_loadu_pd(&M.p_density_vectors[index_aux]);
-                        __m256d density_dec1 = _mm256_loadu_pd(&M.p_density_vectors[index_dec]);
+                        __m256d density_curr1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_aux]);
+                        __m256d density_dec1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_dec]);
 
                         density_curr1 = _mm256_fnmadd_pd(cy1, density_curr1, density_dec1);
 
-                        _mm256_storeu_pd(&M.p_density_vectors[index_dec], density_curr1);
+                        _mm256_storeu_pd(&(*M.p_density_vectors)[index_dec], density_curr1);
                         index_aux = index_dec;
                     }
                 }
@@ -2215,14 +2216,14 @@ namespace BioFVM
                     int index_3d = index - last_xplane;
                     int d = (index - last_xplane) % M.mesh.n_substrates;
 
-                    M.p_density_vectors[index_aux] -= M.thomas_cx[M.mesh.x_size - 1][d] * block3d[index_3d];
+                    (*M.p_density_vectors)[index_aux] -= M.thomas_cx[M.mesh.x_size - 1][d] * block3d[index_3d];
 
 
                     for (int i = M.mesh.x_size - 2; i >= 0; i--)
                     {
                         int index_dec = index_aux - M.thomas_i_jump;
                         // naxpy(&(*M.microenvironment)[n], M.thomas_cx[i], (*M.microenvironment)[n + M.i_jump]);
-                        M.p_density_vectors[index_dec] -= M.thomas_cx[i][d] * M.p_density_vectors[index_aux];
+                        (*M.p_density_vectors)[index_dec] -= M.thomas_cx[i][d] * (*M.p_density_vectors)[index_aux];
                         
                         index_aux = index_dec;
                     }
@@ -2231,7 +2232,7 @@ namespace BioFVM
                 if (rank > 0)
                 {
                     MPI_Request aux;
-                    MPI_Isend(&(M.p_density_vectors[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, MPI_COMM_WORLD, &send_req[step]);
+                    MPI_Isend(&((*M.p_density_vectors)[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, MPI_COMM_WORLD, &send_req[step]);
                     // cout << "Rank " << rank << " has send" << endl;
                 }
             }
@@ -2249,7 +2250,7 @@ namespace BioFVM
                     // naxpy(&(*M.microenvironment)[n], M.thomas_cx[M.mesh.x_coordinates.size() - 1], block3d[k][j]);
                     for (int d = 0; d < M.thomas_k_jump; d++)
                     {
-                        M.p_density_vectors[index_aux + d] -= M.thomas_cx[M.mesh.x_size - 1][d] * block3d[index_3d + d];
+                        (*M.p_density_vectors)[index_aux + d] -= M.thomas_cx[M.mesh.x_size - 1][d] * block3d[index_3d + d];
                     }
 
                     for (int i = M.mesh.x_size - 2; i >= 0; i--)
@@ -2259,7 +2260,7 @@ namespace BioFVM
                         // naxpy(&(*M.microenvironment)[n], M.thomas_cx[i], (*M.microenvironment)[n + M.i_jump]);
                         for (int d = 0; d < M.thomas_k_jump; d++)
                         {
-                            M.p_density_vectors[index_dec + d] -= M.thomas_cx[i][d] * M.p_density_vectors[index_aux + d];
+                            (*M.p_density_vectors)[index_dec + d] -= M.thomas_cx[i][d] * (*M.p_density_vectors)[index_aux + d];
                         }
                         index_aux = index_dec;
                         
@@ -2268,7 +2269,7 @@ namespace BioFVM
                 if (rank > 0)
                 {
                     MPI_Request aux;
-                    MPI_Isend(&(M.p_density_vectors[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, MPI_COMM_WORLD, &send_req[granurality]);
+                    MPI_Isend(&((*M.p_density_vectors)[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, MPI_COMM_WORLD, &send_req[granurality]);
                 }
             }
         }
@@ -2295,11 +2296,11 @@ namespace BioFVM
         for (zd = 0; zd + vl < M.thomas_j_jump; zd+=vl)
         {
             __m256d denomy1 = _mm256_loadu_pd(&M.gthomas_denomy[0][gd]);
-            __m256d density1 = _mm256_loadu_pd(&M.p_density_vectors[index + zd]);
+            __m256d density1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index + zd]);
             gd+=vl;
             if (gd == M.gvec_size) gd = 0;
             __m256d aux1 = _mm256_div_pd(density1, denomy1);
-            _mm256_storeu_pd(&M.p_density_vectors[index + zd], aux1);
+            _mm256_storeu_pd(&(*M.p_density_vectors)[index + zd], aux1);
         }
         //Epilogo
         int ep = M.thomas_j_jump - zd;
@@ -2310,7 +2311,7 @@ namespace BioFVM
         {
             for (int d = d_ini; d < M.mesh.n_substrates; ++d){
                 d_ini = 0;
-                M.p_density_vectors[index + d] /= M.thomas_denomy[0][d];
+                (*M.p_density_vectors)[index + d] /= M.thomas_denomy[0][d];
             }
             index+=M.thomas_k_jump;
         }
@@ -2324,14 +2325,14 @@ namespace BioFVM
             for (zd = 0; zd + vl < M.thomas_j_jump; zd+=vl)
             {
                 __m256d constant1 = _mm256_loadu_pd(&M.gthomas_constant1[gd]);
-                __m256d density_curr1 = _mm256_loadu_pd(&M.p_density_vectors[index_base + zd]);
-                __m256d density_inc1 = _mm256_loadu_pd(&M.p_density_vectors[index_inc + zd]);
+                __m256d density_curr1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_base + zd]);
+                __m256d density_inc1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_inc + zd]);
                 __m256d denomy1 = _mm256_loadu_pd(&M.gthomas_denomy[j][gd]);
                 gd+=vl;
                 if (gd == M.gvec_size) gd = 0;
                 density_curr1 = _mm256_fmadd_pd(constant1, density_curr1, density_inc1);
                 density_curr1 = _mm256_div_pd(density_curr1, denomy1);
-                _mm256_storeu_pd(&M.p_density_vectors[index_inc + zd], density_curr1);
+                _mm256_storeu_pd(&(*M.p_density_vectors)[index_inc + zd], density_curr1);
             }
             //Epilogo
             int ep = M.thomas_j_jump - zd;
@@ -2343,8 +2344,8 @@ namespace BioFVM
             {
                 for (int d = d_ini; d < M.mesh.n_substrates; ++d){
                     d_ini = 0;
-                    M.p_density_vectors[index_inc + d] += M.thomas_constant1[d] * M.p_density_vectors[index_base + d];
-                    M.p_density_vectors[index_inc + d] /= M.thomas_denomy[j][d];
+                    (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index_base + d];
+                    (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomy[j][d];
                 }
                 index_base+=M.thomas_k_jump;
                 index_inc+=M.thomas_k_jump;
@@ -2360,14 +2361,14 @@ namespace BioFVM
             for ( zd = 0; zd + vl < M.thomas_j_jump; zd+=vl)
             {
                 __m256d cy1 = _mm256_loadu_pd(&M.gthomas_cy[j][gd]);
-                __m256d density_curr1 = _mm256_loadu_pd(&M.p_density_vectors[index_base + zd]);
-                __m256d density_dec1 = _mm256_loadu_pd(&M.p_density_vectors[index_dec+ zd]);
+                __m256d density_curr1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_base + zd]);
+                __m256d density_dec1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_dec+ zd]);
                 gd+=vl;
                 if (gd == M.gvec_size) gd = 0;
 
                 density_curr1 = _mm256_fnmadd_pd(cy1, density_curr1, density_dec1);
 
-                _mm256_storeu_pd(&M.p_density_vectors[index_dec + zd], density_curr1);
+                _mm256_storeu_pd(&(*M.p_density_vectors)[index_dec + zd], density_curr1);
                 
             }
 
@@ -2381,7 +2382,7 @@ namespace BioFVM
             {
                 for (int d = d_ini; d < M.mesh.n_substrates; ++d){
                     d_ini = 0;
-                    M.p_density_vectors[index_dec + d] -= M.thomas_cy[j][d] * M.p_density_vectors[index_base + d];
+                    (*M.p_density_vectors)[index_dec + d] -= M.thomas_cy[j][d] * (*M.p_density_vectors)[index_base + d];
                 }
                 index_base+=M.thomas_k_jump;
                 index_dec+=M.thomas_k_jump;
@@ -2406,10 +2407,10 @@ namespace BioFVM
         for (int j = 0; j < M.mesh.y_size; j++)
             {
             int index = i * M.thomas_i_jump + j * M.thomas_j_jump;
-            //(*M.p_density_vectors)[n] /= M.thomas_denomz[0];
+            //(*(*M.p_density_vectors))[n] /= M.thomas_denomz[0];
             for (int d = 0; d < M.mesh.n_substrates; d++)
             {
-                M.p_density_vectors[index + d] /= M.thomas_denomz[0][d];
+                (*M.p_density_vectors)[index + d] /= M.thomas_denomz[0][d];
             }
 
             // should be an empty loop if mesh.z_coordinates.size() < 2
@@ -2417,15 +2418,15 @@ namespace BioFVM
             {
 
                 int index_inc = index + M.thomas_k_jump;
-                // axpy(&(*M.p_density_vectors)[n], M.thomas_constant1, (*M.p_density_vectors)[n - M.thomas_k_jump]);
+                // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, (*(*M.p_density_vectors))[n - M.thomas_k_jump]);
                 for (int d = 0; d < M.mesh.n_substrates; d++)
                 {
-                    M.p_density_vectors[index_inc + d] += M.p_density_vectors[d] * M.p_density_vectors[index + d];
+                    (*M.p_density_vectors)[index_inc + d] += (*M.p_density_vectors)[d] * (*M.p_density_vectors)[index + d];
                 }
-                //(*M.p_density_vectors)[n] /= M.thomas_denomz[k];
+                //(*(*M.p_density_vectors))[n] /= M.thomas_denomz[k];
                 for (int d = 0; d < M.mesh.n_substrates; d++)
                 {
-                    M.p_density_vectors[index_inc + d] /= M.thomas_denomz[k][d];
+                    (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomz[k][d];
                 }
 
                 index = index_inc;
@@ -2436,10 +2437,10 @@ namespace BioFVM
             {
 
                 int index_dec = index - M.thomas_k_jump;
-                // naxpy(&(*M.p_density_vectors)[n], M.thomas_cz[k], (*M.p_density_vectors)[n + M.thomas_k_jump]);
+                // naxpy(&(*(*M.p_density_vectors))[n], M.thomas_cz[k], (*(*M.p_density_vectors))[n + M.thomas_k_jump]);
                 for (int d = 0; d < M.mesh.n_substrates; d++)
                 {
-                    M.p_density_vectors[index_dec + d] -= M.thomas_cz[k][d] * M.p_density_vectors[index + d];
+                    (*M.p_density_vectors)[index_dec + d] -= M.thomas_cz[k][d] * (*M.p_density_vectors)[index + d];
                 }
                 index = index_dec;
             }
@@ -2480,8 +2481,8 @@ namespace BioFVM
                     std::cout << (M.mesh.x_coordinates.size()*rank) + i << " " << j << " " << k << " : ";
                     for (int d = 0; d < M.number_of_densities(); ++d)
                     {
-                        outputFile << M.p_density_vectors[index] << " ";
-                        std::cout << M.p_density_vectors[index] << " ";
+                        outputFile << (*M.p_density_vectors)[index] << " ";
+                        std::cout << (*M.p_density_vectors)[index] << " ";
                         ++index;
                     }
                     std::cout << endl;

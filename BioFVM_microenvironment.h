@@ -69,14 +69,14 @@ namespace BioFVM
 		friend std::ostream &operator<<(std::ostream &os, const Microenvironment &S);
 
 		/*! For internal use and accelerations in solvers */
-		std::vector<std::vector<double>> temporary_density_vectors1;
+		std::vector<double> temporary_density_vectors1;
 		/*! For internal use and accelerations in solvers */
-		std::vector<std::vector<double>> temporary_density_vectors2;
+		std::vector<double> temporary_density_vectors2;
 
 		/*! for internal use in bulk source/sink solvers */
-		std::vector<std::vector<double>> bulk_source_sink_solver_temp1;
-		std::vector<std::vector<double>> bulk_source_sink_solver_temp2;
-		std::vector<std::vector<double>> bulk_source_sink_solver_temp3;
+		std::vector<double> bulk_source_sink_solver_temp1;
+		std::vector<double> bulk_source_sink_solver_temp2;
+		std::vector<double> bulk_source_sink_solver_temp3;
 		bool bulk_source_sink_solver_setup_done;
 
 		/*! stores pointer to current density solutions. Access via operator() functions. */
@@ -127,22 +127,17 @@ namespace BioFVM
         vector<vector<double>> gthomas_cx, gthomas_cy, gthomas_cz;
         //Dirichlet conditions
         int gvec_size;
-		
-		
 
-		// on "resize density" type operations, need to extend all of these
-
-		/*
 		std::vector<int> dirichlet_indices;
-		std::vector< std::vector<double> > dirichlet_value_vectors;
-		std::vector<bool> dirichlet_node_map;
-		*/
+		//std::vector< std::vector<double> > dirichlet_value_vectors;
+		//std::vector<bool> dirichlet_node_map;
 		std::vector<double> dirichlet_value_vectors;
 		std::vector<bool> dirichlet_activation_vector;
 
 	public:
-		std::vector<double> p_density_vectors; // Jose
+		std::vector<double> *p_density_vectors; // Jose
 		std::string timing_csv;
+		uint granurality;
 
 		/*! The mesh for the diffusing quantities */
 		Cartesian_Mesh mesh;
@@ -170,9 +165,9 @@ namespace BioFVM
 		void print_result(double dt, int mpi_Size, int mpi_Rank, int *mpi_Coords, std::string *file_name , int *mpi_Dims, MPI_Comm mpi_Cart_comm);
 	    void (*print_voxels_densities)( Microenvironment&, double, int, int, int *, std::string * ,int *, MPI_Comm);
 		void (*diffusion_decay_solver)(Microenvironment &, double, int, int, int ,int *, int *, MPI_Comm); //-->Gaurav Saxena changed prototype
-		void (*bulk_supply_rate_function)(Microenvironment *pMicroenvironment, int voxel_index, std::vector<double> *write_destination);
-		void (*bulk_supply_target_densities_function)(Microenvironment *pMicroenvironment, int voxel_index, std::vector<double> *write_destination);
-		void (*bulk_uptake_rate_function)(Microenvironment *pMicroenvironment, int voxel_index, std::vector<double> *write_destination);
+		void (*bulk_supply_rate_function)(Microenvironment *pMicroenvironment, int voxel_index, double *write_destination);
+		void (*bulk_supply_target_densities_function)(Microenvironment *pMicroenvironment, int voxel_index, double *write_destination);
+		void (*bulk_uptake_rate_function)(Microenvironment *pMicroenvironment, int voxel_index, double *write_destination);
 
 		/*! functions to simplify size queries */
 
@@ -212,15 +207,15 @@ namespace BioFVM
 		Voxel &nearest_voxel(std::vector<double> &position);
 		Voxel &voxels(int voxel_index);
 		Voxel &voxels(int x, int y, int z); //Jose
-		std::vector<double> &nearest_density_vector(std::vector<double> &position);
-		std::vector<double> &nearest_density_vector(int voxel_index);
+		double *nearest_density_vector(std::vector<double> &position);
+		double *nearest_density_vector(int voxel_index);
 
 		/*! access the density vector at  [ X(i),Y(j),Z(k) ] */
-		std::vector<double> &operator()(int i, int j, int k);
+		double *operator()(int i, int j, int k);
 		/*! access the density vector at  [ X(i),Y(j),0 ]  -- helpful for 2-D problems */
-		std::vector<double> &operator()(int i, int j);
+		double *operator()(int i, int j);
 		/*! access the density vector at [x,y,z](n) */
-		std::vector<double> &operator()(int n);
+		double *operator()(int n);
 
 		std::vector<gradient> &gradient_vector(int i, int j, int k);
 		std::vector<gradient> &gradient_vector(int i, int j);
@@ -233,19 +228,19 @@ namespace BioFVM
 		void reset_all_gradient_vectors(void);
 
 		/*! access the density vector at  [ X(i),Y(j),Z(k) ] */
-		std::vector<double>::iterator density_vector(int i, int j, int k);
+		double *density_vector(int i, int j, int k);
 		/*! access the density vector at  [ X(i),Y(j),0 ]  -- helpful for 2-D problems */
-		std::vector<double> &density_vector(int i, int j);
+		double *density_vector(int i, int j);
 		/*! access the density vector at [x,y,z](n) */
-		std::vector<double> &density_vector(int n);
+		double *density_vector(int n);
 
 		//Jose begin
-		std::vector<double> &dirichlet_values(int i, int j, int k);
+		double *dirichlet_values(int i, int j, int k);
 		//Jose end
 
 		/*! advance the diffusion-decay solver by dt time */
 		//void simulate_diffusion_decay(double dt, int mpi_Size, int mpi_Rank, int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); //-->Gaurav Saxena changed this prototype
-		void simulate_diffusion_decay(double dt, int mpi_Size, int mpi_Rank, int granurality,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); 
+		void simulate_diffusion_decay(double dt, int mpi_Size, int mpi_Rank,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); 
 
 		/*! advance the source/sink solver by dt time */
 		void simulate_bulk_sources_and_sinks(double dt);
@@ -275,8 +270,8 @@ namespace BioFVM
 		friend void diffusion_decay_solver__constant_coefficients_explicit_uniform_mesh(Microenvironment &S, double dt);
 
 		//friend void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &M, double dt, int size, int rank, int granurality, int *coords, int *dims, MPI_Comm mpi_Cart_comm);
-		friend void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank, int granurality ,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); //-->Gaurav Saxena changed this prototype
-		friend void diffusion_decay_solver__constant_coefficients_LOD_3D_vectorized(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank, int granurality ,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); 
+		friend void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); //-->Gaurav Saxena changed this prototype
+		friend void diffusion_decay_solver__constant_coefficients_LOD_3D_vectorized(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); 
 		friend void diffusion_decay_solver__constant_coefficients_LOD_2D(Microenvironment &S, double dt);
 
 		friend void diffusion_decay_explicit_uniform_rates(Microenvironment &M, double dt);
@@ -301,7 +296,8 @@ namespace BioFVM
 	extern void diffusion_decay_solver__variable_coefficients_explicit_uniform_mesh(Microenvironment &S, double dt);
 
 	//extern void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &M, double dt, int size, int rank, int granurality, int *coords, int *dims, MPI_Comm mpi_Cart_comm);
-	extern void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank, int granurality, int *mpi_Coords, int *mpi_Dims, int *mpi_Cart_comm); //-->Gaurav Saxena changed this prototype
+	extern void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank, int *mpi_Coords, int *mpi_Dims, int *mpi_Cart_comm); //-->Gaurav Saxena changed this prototype
+	extern void diffusion_decay_solver__constant_coefficients_LOD_3D_vectorized(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); 
 	extern void diffusion_decay_solver__constant_coefficients_LOD_2D(Microenvironment &S, double dt);
 
 	extern void diffusion_decay_solver__variable_coefficients_LOD_3D(Microenvironment &S, double dt);
@@ -309,11 +305,11 @@ namespace BioFVM
 
 	extern void diffusion_decay_source_sink_solver__constant_coefficients_LOD_3D(Microenvironment &S, double dt);
 
-	void zero_function(std::vector<double> &position, std::vector<double> &input, std::vector<double> *destination);
-	void one_function(std::vector<double> &position, std::vector<double> &input, std::vector<double> *destination);
+	void zero_function(std::vector<double> &position, std::vector<double> &input, double *destination);
+	void one_function(std::vector<double> &position, std::vector<double> &input, double *destination);
 
-	void zero_function(Microenvironment *pMicroenvironment, int voxel_index, std::vector<double> *write_destination);
-	void one_function(Microenvironment *pMicroenvironment, int voxel_index, std::vector<double> *write_destination);
+	void zero_function(Microenvironment *pMicroenvironment, int voxel_index, double *write_destination);
+	void one_function(Microenvironment *pMicroenvironment, int voxel_index, double *write_destination);
 
 	void set_default_microenvironment(Microenvironment *M);
 	Microenvironment *get_default_microenvironment(void);

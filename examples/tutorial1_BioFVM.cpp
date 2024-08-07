@@ -68,7 +68,7 @@ using namespace BioFVM;
 //int omp_num_threads = 48; // set number of threads for parallel computing, set this to # of CPU cores x 2 (for hyperthreading)
 
 
-#define N 1000
+#define N 5000
 double pi= 3.1415926535897932384626433832795;
 
 double UniformRandom()
@@ -245,8 +245,8 @@ void create_point_sources(double cell_radius, double dt, int num_sources, Microe
                     temp_point_source->ID = list_of_IDs[k];         //Added this statement to overwrite Constructor generated ID.
 
                     temp_point_source->set_total_volume( (4.0/3.0)*pi*pow(cell_radius,3.0) );
-                    (*temp_point_source->secretion_rates)[0]=10;
-                    (*temp_point_source->saturation_densities)[0]=1;
+                    (*temp_point_source->secretion_rates).resize(1,10); //[0]=10;
+                    (*temp_point_source->saturation_densities).resize(1,1); //[0]=1;
                     temp_point_source->set_internal_uptake_constants(dt);
                 }
 
@@ -522,7 +522,7 @@ int main( int argc, char* argv[] )
 	center[1] = (microenvironment.mesh.bounding_box[1]+microenvironment.mesh.bounding_box[4])/2;
 	center[2] = (microenvironment.mesh.bounding_box[2]+microenvironment.mesh.bounding_box[5])/2;
 	double stddev_squared = -100.0 * 100.0;
-	std::vector<double> one( microenvironment.density_vector(0).size() , 1.0 );
+	std::vector<double> one( microenvironment.number_of_densities() , 1.0 );
 
 
 
@@ -541,19 +541,20 @@ int main( int argc, char* argv[] )
         std::cout<<"TIME FOR GENERATING GAUSSIAN PROFILE = "<< (t_end-t_start)<< std::endl;
 
 	t_start = MPI_Wtime();
-    microenvironment.write_to_matlab( "/gpfs/projects/bsc99/BioFVM_Files/initial_concentration.mat", mpi_Rank, mpi_Size, mpi_Cart_comm );
+    microenvironment.write_to_matlab( "/home/bsc/bsc008383/CI/biofvm-b/output/initial_concentration.mat", mpi_Rank, mpi_Size, mpi_Cart_comm );
     t_end = MPI_Wtime();
     if(mpi_Rank==0)
         std::cout<<"TIME FOR WRITING INITIAL CONCENTRATION FILE = "<< (t_end-t_start)<< std::endl;
 
 	// register the diffusion solver
-	microenvironment.diffusion_decay_solver = diffusion_decay_solver__constant_coefficients_LOD_3D;
+	microenvironment.diffusion_decay_solver = diffusion_decay_solver__constant_coefficients_LOD_3D_vectorized;
 
 	// register substrates properties
 	microenvironment.diffusion_coefficients[0] = 1000; // microns^2 / min
 	microenvironment.decay_rates[0] = 0.01;
 
 
+    microenvironment.granurality = mpi_Size;
 
 	double dt          = 0.01;
 	double cell_radius = 5;
@@ -583,7 +584,7 @@ int main( int argc, char* argv[] )
         std::cout<<"TIME FOR SIMULATING (SOURCES+SINKS+DIFFUSION) = "<< (t_end-t_start)<< std::endl;
 
 	t_start = MPI_Wtime();
-    microenvironment.write_to_matlab( "/gpfs/projects/bsc99/BioFVM_Files/final.mat", mpi_Rank, mpi_Size, mpi_Cart_comm );            //Remember to use Parallel Version !
+    microenvironment.write_to_matlab( "/home/bsc/bsc008383/CI/biofvm-b/output/final.mat", mpi_Rank, mpi_Size, mpi_Cart_comm );            //Remember to use Parallel Version !
     t_end = MPI_Wtime();
     if(mpi_Rank==0)
         std::cout<<"TIME FOR WRITING FINAL FILE = "<< (t_end-t_start)<< std::endl;
