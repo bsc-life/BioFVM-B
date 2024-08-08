@@ -45,7 +45,7 @@ namespace BioFVM
         */
         int box_elements = mesh.x_size * mesh.y_size * mesh.z_size * number_of_densities();
         dirichlet_value_vectors.assign(box_elements, 100.0);
-        p_density_vectors.resize(box_elements);
+        (*p_density_vectors).resize(box_elements);
         return;
     }
 
@@ -741,7 +741,7 @@ namespace BioFVM
 
         int n = 0;
         int density_index = 0;
-
+        //Jose: we can parallelize write in buffer with openmp loop
         for (int i = 0; i < number_of_data_entries; i++)
         {
 
@@ -757,7 +757,7 @@ namespace BioFVM
 
             for (int j = 0; j < number_of_densities(); j++)
             {
-                buffer[n++] = p_density_vectors[density_index];
+                buffer[n++] = (*p_density_vectors)[density_index];
 			    ++density_index;      
             }
         }

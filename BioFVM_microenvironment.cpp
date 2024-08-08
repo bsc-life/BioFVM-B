@@ -97,11 +97,29 @@ namespace BioFVM
 		return;
 	}
 
+	void zero_function(Microenvironment *pMicroenvironment, int voxel_index, double *write_destination)
+	{
+		for (int i = 0; i < (*pMicroenvironment).number_of_densities(); i++)
+		{
+			write_destination[i] = 0.0;
+		}
+		return;
+	}
+
 	void one_function(Microenvironment *pMicroenvironment, int voxel_index, std::vector<double> *write_destination)
 	{
 		for (int i = 0; i < write_destination->size(); i++)
 		{
 			(*write_destination)[i] = 1.0;
+		}
+		return;
+	}
+
+	void one_function(Microenvironment *pMicroenvironment, int voxel_index, double *write_destination)
+	{
+		for (int i = 0; i < (*pMicroenvironment).number_of_densities(); i++)
+		{
+			write_destination[i] = 1.0;
 		}
 		return;
 	}
@@ -147,12 +165,11 @@ namespace BioFVM
 		
 		if (diffusion_decay_solver != diffusion_decay_explicit_uniform_rates)
 		{
-			std::cout << "Initializing temporary density vectors!" << std::endl;
 			temporary_density_vectors1.resize(mesh.x_size*mesh.y_size*mesh.z_size*number_of_densities(),0.0);
 			temporary_density_vectors2.resize(mesh.x_size*mesh.y_size*mesh.z_size*number_of_densities(),0.0);
 		}
 		else
-			std::cout << "Temporary vectors will not be used" << std::endl;
+			std::cout << "BioFVM_Microenvironment: Temporary vectors will not be used" << std::endl;
 		
 
 		p_density_vectors = &temporary_density_vectors1;
@@ -211,7 +228,9 @@ namespace BioFVM
 	{
 		mesh.voxels[voxel_index].is_Dirichlet = true;
 
-		dirichlet_value_vectors[voxel_index] = value; // .assign( mesh.voxels.size(), one );
+		int n = voxel_index * number_of_densities(); //obtain pointer for 4D array
+		for(int i = 0; i < value.size(); ++i)
+			dirichlet_value_vectors[n + i] = value[i];
 		return;
 	}
 
@@ -247,11 +266,12 @@ namespace BioFVM
 			return;
 		}
 
-		dirichlet_value_vectors[n] = new_value;
+		n *= number_of_densities(); //obtain pointer for 4D array
+		for(int i = 0; i < new_value.size(); ++i)
+			dirichlet_value_vectors[n + i] = new_value[i];
 			
 		
 		mesh.voxels[voxel_index].is_Dirichlet = true;
-		dirichlet_value_vectors[voxel_index] = new_value;
 		
 		return;
 	}
@@ -948,11 +968,19 @@ namespace BioFVM
 		return &((*p_density_vectors)[n*number_of_densities()]);
 	}
 
+	double *Microenvironment::density_vector(int n) {
+		return &((*p_density_vectors)[n*number_of_densities()]);
+	}
+
+	double *Microenvironment::density_vector(int i, int j, int k) {
+		return &((*p_density_vectors)[voxel_index(i, j, k) *number_of_densities()]);
+	}
+
 
 void Microenvironment::simulate_diffusion_decay( double dt, int mpi_Size, int mpi_Rank,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm )
 {
 	if( diffusion_decay_solver )
-	{ diffusion_decay_solver( *this, dt, mpi_Size, mpi_Rank, granurality, mpi_Coords, mpi_Dims, mpi_Cart_comm ); }
+	{ diffusion_decay_solver( *this, dt, mpi_Size, mpi_Rank, mpi_Coords, mpi_Dims, mpi_Cart_comm ); }
 	else
 	{
 		std::cout << "Warning: diffusion-reaction-source/sink solver not set for Microenvironment object at " << this << ". Nothing happened!" << std::endl; 

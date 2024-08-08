@@ -457,9 +457,9 @@ namespace BioFVM
 
 		connected_voxel_indices.resize(voxels.size());
 
-		int i_jump = 1;
-		int j_jump = x_coordinates.size();
-		int k_jump = x_coordinates.size() * y_coordinates.size();
+		int i_jump = y_coordinates.size()*z_coordinates.size();
+		int j_jump = z_coordinates.size();
+		int k_jump = 1;
 
 		// x-aligned connections
 		for (int k = 0; k < z_coordinates.size(); k++)
@@ -503,9 +503,6 @@ namespace BioFVM
 
 	Cartesian_Mesh::Cartesian_Mesh(int xnodes, int ynodes, int znodes)
 	{
-
-		std::cout << "Cartesian mesh initialization desactivated" <<std::endl;
-		/*
 		x_coordinates.assign(xnodes, 0.0);
 		y_coordinates.assign(ynodes, 0.0);
 		z_coordinates.assign(znodes, 0.0);
@@ -555,11 +552,11 @@ namespace BioFVM
 		// initializing and connecting voxels
 
 		int n = 0;
-		for (int k = 0; k < z_coordinates.size(); k++)
+		for (int i = 0; i < x_coordinates.size(); i++)
 		{
 			for (int j = 0; j < y_coordinates.size(); j++)
 			{
-				for (int i = 0; i < x_coordinates.size(); i++)
+				for (int k = 0; k < z_coordinates.size(); k++)
 				{
 					voxels[n].center[0] = x_coordinates[i];
 					voxels[n].center[1] = y_coordinates[j];
@@ -576,9 +573,9 @@ namespace BioFVM
 
 		connected_voxel_indices.resize(voxels.size());
 
-		int i_jump = 1;
-		int j_jump = x_coordinates.size();
-		int k_jump = x_coordinates.size() * y_coordinates.size();
+		int i_jump = y_coordinates.size()*z_coordinates.size();
+		int j_jump = z_coordinates.size();
+		int k_jump = 1;
 
 		// x-aligned connections
 		for (int k = 0; k < z_coordinates.size(); k++)
@@ -620,7 +617,7 @@ namespace BioFVM
 		if (use_voxel_faces)
 		{
 			create_voxel_faces();
-		}*/
+		}
 	}
 
 	void Cartesian_Mesh::create_moore_neighborhood()
@@ -677,8 +674,7 @@ namespace BioFVM
 	// Equivalent of BioFVM_parallel.cpp: Cartesian_Mesh::resize but with no MPI. 
 	void Cartesian_Mesh::resize(double x_start, double x_end, double y_start, double y_end, double z_start, double z_end, int x_nodes, int y_nodes, int z_nodes)
 	{ 
-		std::cout << "Cartesian mesh resize desactivated 2" << std::endl;
-		/*
+		
 		int x_index;
         int y_index;
         int z_index;
@@ -752,13 +748,11 @@ namespace BioFVM
 
 		voxels.assign(x_coordinates.size() * y_coordinates.size() * z_coordinates.size(), template_voxel);
 
-		//cout << "Rank have asign the mesh size" << endl;
-        //cout << "size of voxels vector " << voxels.size() << endl;
-        int local_start_of_global_index = (coords[1] * z_nodes * y_nodes * local_x_nodes) +  //Imagine 3rd plate 'beginning' point (leftmost bottom point)
-                                      (dims[0]-coords[0]-1) * z_nodes * local_y_nodes +  //Imagine going up in 3rd plate
-                                      (coords[2] * local_z_nodes) ;
+		/*
+        int local_start_of_global_index = (coords[1] * z_nodes * y_nodes * x_nodes) +  //Imagine 3rd plate 'beginning' point (leftmost bottom point)
+                                      (dims[0]-coords[0]-1) * z_nodes * y_nodes +  //Imagine going up in 3rd plate
+                                      (coords[2] * z_nodes) ; */
 
-		int n = 0;
 		#pragma omp parallel for collapse(3)
 		for( unsigned int i=0 ; i < x_coordinates.size() ; i++ )
 		{
@@ -769,22 +763,20 @@ namespace BioFVM
                     int z_index = k;
 				    int y_index = j * z_nodes;  
 				    int x_index = i * y_nodes * z_nodes;
-                    BioFVM::Voxel aux; // = *((voxels_jose[i]) + (j * y_coordinates.size()) + k);
+					int voxel_index = x_index + y_index + z_index;
+                    BioFVM::Voxel aux;
                     aux = template_voxel;
                     aux.center[0] = x_coordinates[i];
                     aux.center[1] = y_coordinates[j];
                     aux.center[2] = z_coordinates[k];
-                    aux.mesh_index = n;                                                          // This now becomes the local index (Jose: will not be necessary)
-                    aux.global_mesh_index = local_start_of_global_index + z_index + y_index + x_index; 
+                    aux.mesh_index = voxel_index;                                                          // This now becomes the local index (Jose: will not be necessary)
+                    aux.global_mesh_index = z_index + y_index + x_index; 
                     aux.volume = dV;
-                    voxels[n] = aux; 
+                    voxels[voxel_index] = aux; 
                 }
             }
-        }*/
-        //cout << "Voxels are generated" << endl;
-
-		// make connections
-		/*
+        }
+      
 		connected_voxel_indices.resize(voxels.size());
 		voxel_faces.clear();
 
@@ -792,9 +784,9 @@ namespace BioFVM
 		{
 			connected_voxel_indices[i].clear();
 		}
-		int i_jump = 1;
-		int j_jump = x_coordinates.size();
-		int k_jump = x_coordinates.size() * y_coordinates.size();
+		int i_jump = y_coordinates.size() * z_coordinates.size();
+		int j_jump = z_coordinates.size();
+		int k_jump = 1;
 
 		// x-aligned connections
 		int count = 0;
@@ -840,15 +832,13 @@ namespace BioFVM
 			create_voxel_faces();
 		}
 
-		create_moore_neighborhood(); */
-		//std::cout << "	Cartesian mesh resize 2 is completed!" << std::endl;
+		create_moore_neighborhood();
+
 		return;
 	}
 
 	void Cartesian_Mesh::resize(double x_start, double x_end, double y_start, double y_end, double z_start, double z_end, double dx_new, double dy_new, double dz_new)
 	{
-		//std::cout << "Cartesian Mesh resize desactivated 1" << std::endl;
-		/*
 		dx = dx_new;
 		dy = dy_new;
 		dz = dz_new;
@@ -903,11 +893,11 @@ namespace BioFVM
 		voxels.assign(x_coordinates.size() * y_coordinates.size() * z_coordinates.size(), template_voxel);
 
 		int n = 0;
-		for (int k = 0; k < z_coordinates.size(); k++)
+		for (int i = 0; i < x_coordinates.size(); i++)
 		{
 			for (int j = 0; j < y_coordinates.size(); j++)
 			{
-				for (int i = 0; i < x_coordinates.size(); i++)
+				for (int k = 0; k < z_coordinates.size(); k++)
 				{
 					voxels[n].center[0] = x_coordinates[i];
 					voxels[n].center[1] = y_coordinates[j];
@@ -930,9 +920,9 @@ namespace BioFVM
 			connected_voxel_indices[i].clear();
 		}
 
-		int i_jump = 1;
-		int j_jump = x_coordinates.size();
-		int k_jump = x_coordinates.size() * y_coordinates.size();
+		int i_jump = y_coordinates.size()*z_coordinates.size();
+		int j_jump = z_coordinates.size();
+		int k_jump = 1;
 
 		// x-aligned connections
 		int count = 0;
@@ -981,7 +971,7 @@ namespace BioFVM
 		}
 
 		create_moore_neighborhood();
-		return;*/
+		return;
 	}
 
 	void Cartesian_Mesh::resize(int x_nodes, int y_nodes, int z_nodes)
@@ -1062,8 +1052,7 @@ namespace BioFVM
 
 	Voxel &Cartesian_Mesh::nearest_voxel(std::vector<double> &position)
 	{
-		//std::cout << "error: Cartesian Mesh nearest voxel descativated" << std::endl;
-		//return voxels[nearest_voxel_index(position)];
+		return voxels[nearest_voxel_index(position)];
 	}
 
 	void Cartesian_Mesh::display_information(std::ostream &os)

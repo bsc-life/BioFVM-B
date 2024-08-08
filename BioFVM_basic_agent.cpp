@@ -133,16 +133,15 @@ bool Basic_Agent::assign_position(double x, double y, double z, int mpi_Rank, in
 
 void Basic_Agent::update_voxel_index(int mpi_Rank, int *mpi_Dims)
 {
-	std::cout << "Basic Agent update voxel index desactivated" << std::endl;
-	/*
+	
 	if( !get_microenvironment()->mesh.is_position_valid(position[0],position[1],position[2]))
 	{	
 		current_voxel_index=-1;
 		is_active=false;
 		return;
 	}
-	current_voxel_index= microenvironment->nearest_voxel_local_index( position, mpi_Rank, mpi_Dims );
-	*/
+	current_voxel_index= microenvironment->mesh.nearest_voxel_local_index( position, mpi_Rank, mpi_Dims );
+	
 }
 
 void Basic_Agent::set_internal_uptake_constants( double dt )
@@ -170,17 +169,16 @@ void Basic_Agent::set_internal_uptake_constants( double dt )
 
 void Basic_Agent::register_microenvironment( Microenvironment* microenvironment_in )
 {
-	std::cout << "Basic Agent register microenvironment" << std::endl;
-	/*
+	
 	microenvironment = microenvironment_in; 	
-	secretion_rates->resize( microenvironment->density_vector(0).size() , 0.0 );
-	saturation_densities->resize( microenvironment->density_vector(0).size() , 0.0 );
-	uptake_rates->resize( microenvironment->density_vector(0).size() , 0.0 );	
+	secretion_rates->resize( microenvironment->number_of_densities() , 0.0 );
+	saturation_densities->resize( microenvironment->number_of_densities() , 0.0 );
+	uptake_rates->resize( microenvironment->number_of_densities() , 0.0 );	
 
 	// some solver temporary variables 
-	cell_source_sink_solver_temp1.resize( microenvironment->density_vector(0).size() , 0.0 );
-	cell_source_sink_solver_temp2.resize( microenvironment->density_vector(0).size() , 1.0 );
-	*/
+	cell_source_sink_solver_temp1.resize( microenvironment->number_of_densities() , 0.0 );
+	cell_source_sink_solver_temp2.resize( microenvironment->number_of_densities() , 1.0 );
+	
 	return; 
 }
 
@@ -241,10 +239,9 @@ int Basic_Agent::get_current_voxel_index( void )
 	return current_voxel_index;
 }
 
-std::vector<double>& Basic_Agent::nearest_density_vector( void ) 
+double *Basic_Agent::nearest_density_vector( void ) 
 {  
-	std::cout << "Basic agent nearest density vector desactivated!" << std::endl;
-	//return microenvironment->nearest_density_vector( current_voxel_index ); 
+	return microenvironment->nearest_density_vector( current_voxel_index ); 
 }
 
 
@@ -273,8 +270,7 @@ double Basic_Agent::get_total_volume()
 }
 void Basic_Agent::simulate_secretion_and_uptake( Microenvironment* pS, double dt )
 {
-	std::cout << "Basic Agent simulate secretion and uptake" << std::endl;
-	/*
+	
 	if(!is_active)
 	{ return; }
 	
@@ -283,9 +279,15 @@ void Basic_Agent::simulate_secretion_and_uptake( Microenvironment* pS, double dt
 		set_internal_uptake_constants(dt);
 		volume_is_changed = false;
 	}
-	(*pS)(current_voxel_index) += cell_source_sink_solver_temp1; 
-	(*pS)(current_voxel_index) /= cell_source_sink_solver_temp2; 
-	*/
+
+	int d_size = (*pS).number_of_densities();
+	for(int d = 0; d < d_size; ++d) {
+		(*pS)(current_voxel_index)[d] += cell_source_sink_solver_temp1[d];
+	}
+	for(int d = 0; d < d_size; ++d) {
+		(*pS)(current_voxel_index)[d] /= cell_source_sink_solver_temp2[d];
+	}
+
 	return; 
 }
 

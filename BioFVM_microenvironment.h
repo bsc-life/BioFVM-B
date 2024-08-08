@@ -164,7 +164,7 @@ namespace BioFVM
 
 		void print_result(double dt, int mpi_Size, int mpi_Rank, int *mpi_Coords, std::string *file_name , int *mpi_Dims, MPI_Comm mpi_Cart_comm);
 	    void (*print_voxels_densities)( Microenvironment&, double, int, int, int *, std::string * ,int *, MPI_Comm);
-		void (*diffusion_decay_solver)(Microenvironment &, double, int, int, int ,int *, int *, MPI_Comm); //-->Gaurav Saxena changed prototype
+		void (*diffusion_decay_solver)(Microenvironment &, double, int, int ,int *, int *, MPI_Comm); //-->Gaurav Saxena changed prototype
 		void (*bulk_supply_rate_function)(Microenvironment *pMicroenvironment, int voxel_index, double *write_destination);
 		void (*bulk_supply_target_densities_function)(Microenvironment *pMicroenvironment, int voxel_index, double *write_destination);
 		void (*bulk_uptake_rate_function)(Microenvironment *pMicroenvironment, int voxel_index, double *write_destination);
@@ -296,7 +296,7 @@ namespace BioFVM
 	extern void diffusion_decay_solver__variable_coefficients_explicit_uniform_mesh(Microenvironment &S, double dt);
 
 	//extern void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &M, double dt, int size, int rank, int granurality, int *coords, int *dims, MPI_Comm mpi_Cart_comm);
-	extern void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank, int *mpi_Coords, int *mpi_Dims, int *mpi_Cart_comm); //-->Gaurav Saxena changed this prototype
+	extern void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank, int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); //-->Gaurav Saxena changed this prototype
 	extern void diffusion_decay_solver__constant_coefficients_LOD_3D_vectorized(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); 
 	extern void diffusion_decay_solver__constant_coefficients_LOD_2D(Microenvironment &S, double dt);
 

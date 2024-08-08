@@ -147,6 +147,8 @@ namespace BioFVM
     void vector_to_list_safe(const std::vector<double> &vect, char *&buffer, char delim);
     void vector_to_list(const std::vector<double> &vect, char *&buffer, char delim);
 
+    void array_to_list(const double *vect, int size, char *&buffer, char delim);
+
     void vector3_to_list(const std::vector<double> &vect, char *&buffer, char delim);
 
 };

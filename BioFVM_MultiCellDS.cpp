@@ -706,7 +706,7 @@ void add_BioFVM_substrates_to_open_xml_pugi( pugi::xml_document& xml_dom , std::
 			buffer = new char [data_size]; 
 			for( int j=0 ; j < M.mesh.voxels.size() ; j++ )
 			{
-				vector_to_list( M.density_vector(j) , buffer , ' ' ); 
+				array_to_list( M.density_vector(j), M.number_of_densities() , buffer , ' ' ); 
 				node = node.append_child( "data_vector"); 
 				attrib = node.append_attribute( "voxel_ID" ); 
 				attrib.set_value( M.mesh.voxels[j].mesh_index ); 
@@ -758,7 +758,7 @@ void add_BioFVM_substrates_to_open_xml_pugi( pugi::xml_document& xml_dom , std::
 		node = node.child( "data_vector" );
 		for( int j=0 ; j < M.mesh.voxels.size() ; j++ )
 		{
-			vector_to_list( M.density_vector(j) , buffer , ' ' ); 
+			array_to_list( M.density_vector(j) , M.number_of_densities() ,buffer , ' ' ); 
 			node = node.first_child(); 
 			
 			node.set_value( buffer ); 

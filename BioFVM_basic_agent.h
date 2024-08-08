@@ -107,8 +107,8 @@ class Basic_Agent
 
 	int get_current_voxel_index( void ); 
 	// directly access the substrate vector at the nearest voxel at the indicated microenvironment 
-	std::vector<double>& nearest_density_vector( int microenvironment_index ); // not implemented!
-	std::vector<double>& nearest_density_vector( void );
+	double *nearest_density_vector( int microenvironment_index );  //not implemented yet
+	double *nearest_density_vector( void );
 	
 	// directly access the gradient of substrate n nearest to the cell 
 	std::vector<double>& nearest_gradient( int substrate_index );

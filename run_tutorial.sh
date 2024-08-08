@@ -17,4 +17,4 @@ export OMP_PLACES=threads
 module purge
 module load gcc/13.2.0 openmpi/4.1.5-gcc ddt
 
-srun --nodes=4  --ntasks-per-node=1 --cpus-per-task=112 ./examples/tutorial1 $voxels 1> ./dirichlet/${voxels}_112_th.log 2>  ./dirichlet/${voxels}_112_th.log
+srun --nodes=4  --ntasks-per-node=1 --cpus-per-task=112 ./examples/tutorial1 

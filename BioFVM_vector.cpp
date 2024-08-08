@@ -581,6 +581,20 @@ namespace BioFVM
 		return;
 	}
 
+	void array_to_list(const double *vect, int size, char *&buffer, char delim)
+	{
+		// %.7e is approximately the same at matlab longe for single precision.
+		// If you want better precision, use a binary data format like matlab, or (in the future) HDF
+
+		int position = 0;
+		for (int j = 0; j < size - 1; j++)
+		{
+			position += sprintf(buffer + position, "%.7e%c", vect[j], delim);
+		}
+		sprintf(buffer + position, "%.7e", vect[size - 1]);
+		return;
+	}
+
 	// faster version if you know there are only 3 components
 	void vector3_to_list(const std::vector<double> &vect, char *&buffer, char delim)
 	{
