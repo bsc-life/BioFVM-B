@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --nodes=1
+#SBATCH --nodes=16
 #SBATCH --ntasks-per-node=1
 ##SBATCH --cpus-per-task=112
 #SBATCH --qos=gp_debug
@@ -21,6 +21,7 @@ module load gcc/13.2.0 openmpi/4.1.5-gcc ddt
 
 
 
-mpirun -n 1 --cpus-per-task=56 ./dirichlet_test $voxels 1> ./dirichlet/${voxels}_56_th.log 2>  ./dirichlet/${voxels}_56_th.log
+ddt --connect mpirun -n 16 ./examples/tutorial1
+#srun ./capVoxels 2000 1
 #srun --cpus-per-task=112 ./dirichlet_test $voxels 1> ./dirichlet/${voxels}_112_th.log 2>  ./dirichlet/${voxels}_112_th.log
 

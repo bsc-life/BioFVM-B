@@ -6,7 +6,7 @@ PROGRAM_NAME := make_lib
 CC := mpic++
 
 #For Intel
-#CC := mpiicpc
+#CC := mpicxx
 
 #For TAU
 #CC := tau_cxx.sh
@@ -123,6 +123,8 @@ perfVS: ./examples/perf_voxels_substrates.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECT
 	$(COMPILE_COMMAND) -o ./perf_voxels_substrates ./examples/perf_voxels_substrates.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 capVoxels:  ./examples/cap_voxels.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 	$(COMPILE_COMMAND) -o ./capVoxels ./examples/cap_voxels.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
+capVoxelspaper: ./examples/cap_voxels.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
+	$(COMPILE_COMMAND) -DPAPER -o ./capVoxelsPaper ./examples/cap_voxels.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 testVS:  ./examples/test_VS.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 	$(COMPILE_COMMAND) -o ./test_VS ./examples/test_VS.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 dirichlet_test:  ./examples/dirichlet_test.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)

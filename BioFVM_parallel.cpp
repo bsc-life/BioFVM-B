@@ -5,6 +5,7 @@
 #include <chrono>
 #include <thread>
 #include <immintrin.h>
+#include <omp.h>
 
 namespace BioFVM
 {
@@ -27,12 +28,24 @@ namespace BioFVM
     // Jose
     void Microenvironment::resize_space(double x_start, double x_end, double y_start, double y_end, double z_start, double z_end, double dx_new, double dy_new, double dz_new, int *dims, int *coords)
     {
+        //auto start_time = std::chrono::high_resolution_clock::now();
         mesh.resize(x_start, x_end, y_start, y_end, z_start, z_end, dx_new, dy_new, dz_new, dims, coords);
 
-        // temporary_density_vectors1.assign(mesh.voxels.size(), zero);
-        // temporary_density_vectors2.assign(mesh.voxels.size(), zero);
-        /*
+        //auto end_time = std::chrono::high_resolution_clock::now();
+        //auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        //std::cout << "Time taken 1 : " << duration_ms << "ms" << std::endl;
+        int box_elements = mesh.x_size * mesh.y_size * mesh.z_size * number_of_densities();
+            
+        //start_time = std::chrono::high_resolution_clock::now();
+        temporary_density_vectors1.assign(box_elements, 0.0);
+        temporary_density_vectors2.assign(box_elements, 0.0);
+        //end_time = std::chrono::high_resolution_clock::now();
+        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        //std::cout << "Time taken 2 : " << duration_ms << "ms" << std::endl;
+
+        //start_time = std::chrono::high_resolution_clock::now();
         gradient_vectors.resize(mesh.voxels.size());
+        #pragma omp parallel for
         for (int k = 0; k < mesh.voxels.size(); k++)
         {
             gradient_vectors[k].resize(number_of_densities());
@@ -41,11 +54,20 @@ namespace BioFVM
                 (gradient_vectors[k])[i].resize(3, 0.0);
             }
         }
+        //start_time = std::chrono::high_resolution_clock::now();
         gradient_vector_computed.resize(mesh.voxels.size(), false);
-        */
-        int box_elements = mesh.x_size * mesh.y_size * mesh.z_size * number_of_densities();
+        //end_time = std::chrono::high_resolution_clock::now();
+        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        //std::cout << "Time taken 3 : " << duration_ms << "ms" << std::endl;
+        
+        
+        
+        //start_time = std::chrono::high_resolution_clock::now();
         dirichlet_value_vectors.assign(box_elements, 100.0);
-        (*p_density_vectors).resize(box_elements);
+        //end_time = std::chrono::high_resolution_clock::now();
+        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        //std::cout << "Time taken 4 : " << duration_ms << "ms" << std::endl;
+        //(*p_density_vectors).resize(box_elements);
         return;
     }
 
@@ -104,10 +126,17 @@ namespace BioFVM
         x_size = local_x_nodes;
         y_size = local_y_nodes;
         z_size = local_z_nodes;
+        //auto start_time = std::chrono::high_resolution_clock::now();
+    
 
+       
         x_coordinates.assign(local_x_nodes, 0.0);
         y_coordinates.assign(local_y_nodes, 0.0);
         z_coordinates.assign(local_z_nodes, 0.0);
+        //auto end_time = std::chrono::high_resolution_clock::now();
+        //auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        //std::cout << "  Time taken 1.1 : " << duration_ms << "ms" << std::endl;
+
 
         uniform_mesh = true;
         regular_mesh = true;
@@ -116,7 +145,7 @@ namespace BioFVM
         {
             uniform_mesh = false;
         }
-
+        //start_time = std::chrono::high_resolution_clock::now();
         local_x_start = x_start + (coords[1] * local_x_nodes * dx);
         for (int i = 0; i < x_coordinates.size(); i++)
         {
@@ -134,7 +163,9 @@ namespace BioFVM
         {
             z_coordinates[i] = local_z_start + (i + 0.5) * dz;
         }
-
+        //end_time = std::chrono::high_resolution_clock::now();
+        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        //std::cout << "  Time taken 1.2 : " << duration_ms << "ms" << std::endl;
         /*--------------------------------------------*/
         /*		Global bounding Box	                  */
         /*--------------------------------------------*/
@@ -166,15 +197,18 @@ namespace BioFVM
         /*      total voxels = sum of voxels on MPI processes  */
         /*      Size of x/y/z_coordinates is local_x/y/z_nodes */
         /*-----------------------------------------------------*/
-
+        //start_time = std::chrono::high_resolution_clock::now();
         voxels.assign(x_coordinates.size() * y_coordinates.size() * z_coordinates.size(), template_voxel);
-
+        //end_time = std::chrono::high_resolution_clock::now();
+        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        //std::cout << "  Time taken 1.3 : " << duration_ms << "ms" << std::endl;
         //This depend on the indeaxation from BioFVM-B
         local_start_of_global_index = (coords[1] * z_nodes * y_nodes * local_x_nodes) +       //Imagine 3rd plate 'beginning' point (leftmost bottom point)
                                       (dims[0]-coords[0]-1) * z_nodes * local_y_nodes +       //Imagine going up in 3rd plate
                                       (coords[2] * local_z_nodes) ;
         
         int n = 0;
+        //start_time = std::chrono::high_resolution_clock::now();
         #pragma omp parallel for collapse(3)
         for (int i = 0; i < x_coordinates.size(); i++)
         {
@@ -197,6 +231,9 @@ namespace BioFVM
                 }
             }
         }
+        //end_time = std::chrono::high_resolution_clock::now();
+        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        //std::cout << "  Time taken 1.4: " << duration_ms << "ms" << std::endl;
 
         /*--------------------------*/
 	    /* Make Connections next ...*/
@@ -221,11 +258,15 @@ namespace BioFVM
         /*--------------------------------------------------------------------------------*/
         
         //Clear for safety
+        //start_time = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < connected_voxel_indices.size(); i++)
         {
             connected_voxel_indices[i].clear();
             connected_voxel_global_indices[i].clear();
         }
+        //end_time = std::chrono::high_resolution_clock::now();
+        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        //std::cout << "  Time taken 1.5: " << duration_ms << "ms" << std::endl;
 
         int i_jump = local_y_nodes * local_z_nodes; //Local x-jump
 	    int j_jump = local_z_nodes; //Local y-jump
@@ -242,208 +283,177 @@ namespace BioFVM
         /* Whenever we call functions: connect_voxels_indices_only() and connect_voxels_global_indices_only(), the jump will be a local jump only.            */
         /*----------------------------------------------------------------------------------------------------------------------------------------------------*/
         
-        for (int k = 0; k < z_coordinates.size(); k++)
-        {
-            for (int j = 0; j < y_coordinates.size(); j++)
-            {
-                for (int i = 1; i < x_coordinates.size() - 1; i++)
-                {
-                    int n = voxel_index(i, j, k);                             // Returns local index of voxel
-                    connect_voxels_indices_only(n, n + i_jump, dS_yz);        // Guranteed that adjacent local index will be present
-                    connect_voxels_global_indices_only(n, n + i_jump, dS_yz); // Guranteed that global adjacent index will be present
-                }
-            }
-        }
-
-        // Tackling left boundary of each process
-
-        for (int k = 0; k < z_coordinates.size(); k++)
-        {
-            for (int j = 0; j < y_coordinates.size(); j++)
-            {
-                int n = voxel_index(0, j, k);               // Returns local index of voxel
-                if (voxels[n].center[0] - dx / 2 > x_start) // i.e. it is not a process aligned with left physical boundary
-                {
-                    // First connect this to right neighbour then right neighbour to this.
-                    connect_voxels_indices_only(n, n + i_jump, dS_yz);        // Guranteed that adjacent local index will be present
-                    connect_voxels_global_indices_only(n, n + i_jump, dS_yz); // Guranteed that global adjacent index will be present
-
-                    connected_voxel_indices[n].push_back(-1);                                                 // There is no local left neighbour
-                    connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index - i_global_jump); // But there is a neighbour on previous process, so use global index
-                }
-                else // It is the process that is aligned with left physical boundary
-                {
-                    connect_voxels_indices_only(n, n + i_jump, dS_yz);        // Guranteed that adjacent local index will be present
-                    connect_voxels_global_indices_only(n, n + i_jump, dS_yz); // Guranteed that global adjacent index will be present
-                                                                              // No left local OR global voxel is present
-                }
-            }
-        }
-
-        // Tacking right boundary of each process
-        // Because of loops above, the rightmost voxel is already connected to its left neighbour
-        // but its not connected to its right neighbour (if it exists !)
-
-        for (int k = 0; k < z_coordinates.size(); k++)
-        {
-            for (int j = 0; j < y_coordinates.size(); j++)
-            {
-                int n = voxel_index(x_coordinates.size() - 1, j, k); // Returns local index of voxel
-                if (voxels[n].center[0] + dx / 2 < x_end)            // i.e. it is not a process aligned with right physical boundary
-                {
-                    connected_voxel_indices[n].push_back(-1);                                                 // There is no local right neighbour
-                    connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index + i_global_jump); // But there is a neighbour on next process, so use global index
-                }
-                else // It is the process that is aligned with right physical boundary
-                {
-                    // There is no right local or neighbour across this process. Do nothing.
-                }
-            }
-        }
-
-
-        /*--------------------------------------------------------------------------*/
-        /*                  Y-aligned connections                                   */
-        /*                Again broken into three parts                             */
-        /*--------------------------------------------------------------------------*/
-
-        // Non-boundary parts of each sub-domain
+        int x_size = x_coordinates.size();
+        int y_size = y_coordinates.size();
+        int z_size = z_coordinates.size();
+        //start_time = std::chrono::high_resolution_clock::now();
         
-        for (int k = 0; k < z_coordinates.size(); k++)
-        {
-            for (int i = 0; i < x_coordinates.size(); i++)
-            {
-                for (int j = 1; j < y_coordinates.size() - 1; j++)
-                {
+        //int tid = omp_get_thread_num();
+        //if (tid == 0) {
+        for (int i = 0; i < x_size; ++i) {
+            for (int j = 0; j < y_size; ++j){
+                for (int k = 0; k < z_size; ++k) {
                     int n = voxel_index(i, j, k);
-                    connect_voxels_indices_only(n, n + j_jump, dS_xz);
-                    connect_voxels_global_indices_only(n, n + j_jump, dS_xz);
-                }
-            }
-        }
+                    //Right neighbours
+                    if ( i > 0 and i < x_size - 1){
+                        connected_voxel_indices[n].push_back(n + i_jump);
+                        connected_voxel_indices[n].push_back(n - i_jump);
+                        //connect_voxels_indices_only(n, n + i_jump, dS_yz);        // Guranteed that adjacent local index will be present
+                        connected_voxel_global_indices[n].push_back(voxels[n + i_jump].global_mesh_index);
+                        connected_voxel_global_indices[n].push_back(voxels[n - i_jump].global_mesh_index);
+                        //connect_voxels_global_indices_only(n, n + i_jump, dS_yz); // Guranteed that global adjacent index will be present
+                    }
+                    //Left boundary of each process
+                    if (i == 0) {
+                        if (voxels[n].center[0] - dx / 2 > x_start) // i.e. it is not a process aligned with left physical boundary
+                        {
+                            // First connect this to right neighbour then right neighbour to this.
+                            connected_voxel_indices[n].push_back(n + i_jump);
+                            //connected_voxel_indices[n].push_back(n - i_jump);
+                            //connect_voxels_indices_only(n, n + i_jump, dS_yz);        // Guranteed that adjacent local index will be present
+                            connected_voxel_global_indices[n].push_back(voxels[n + i_jump].global_mesh_index);
+                            //connect_voxels_global_indices[n].push_back(voxels[n - i_jump].global_mesh_index);
+                            //connect_voxels_global_indices_only(n, n + i_jump, dS_yz); // Guranteed that global adjacent index will be present
 
-        // Lower boundary of each sub-domain
+                            //connected_voxel_indices[n].push_back(-1);                                                 // There is no local left neighbour
+                            connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index - i_global_jump); // But there is a neighbour on previous process, so use global index
+                        }
+                        else // It is the process that is aligned with left physical boundary
+                        {
+                            connected_voxel_indices[n].push_back(n + i_jump);
+                            //connect_voxels_indices_only(n, n + i_jump, dS_yz);        // Guranteed that adjacent local index will be present
+                            connected_voxel_global_indices[n].push_back(voxels[n + i_jump].global_mesh_index);
+                            //connect_voxels_global_indices_only(n, n + i_jump, dS_yz); // Guranteed that global adjacent index will be present
+                                                                                    // No left local OR global voxel is present
+                        }
+                    }
+                    //Right boundary of each process
+                    if (i == x_size -1){
+                        if (voxels[n].center[0] + dx / 2 < x_end)            // i.e. it is not a process aligned with right physical boundary
+                        {
+                            //connected_voxel_indices[n].push_back(-1);                                                 // There is no local right neighbour
+                            connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index + i_global_jump); // But there is a neighbour on next process, so use global index
+                        }
+                        else // It is the process that is aligned with right physical boundary
+                        {
+                            // There is no right local or neighbour across this process. Do nothing.
+                        }
+                    }
+                    //Y-aligned parts
+                    if ( j > 0 and j < y_size - 1){
+                        connected_voxel_indices[n].push_back(n + j_jump);
+                        connected_voxel_indices[n].push_back(n - j_jump);
+                        //connect_voxels_indices_only(n, n + j_jump, dS_xz);
+                        connected_voxel_global_indices[n].push_back(voxels[n + j_jump].global_mesh_index);
+                        connected_voxel_global_indices[n].push_back(voxels[n - j_jump].global_mesh_index);
+                        //connect_voxels_global_indices_only(n, n + j_jump, dS_xz);
+                    }
+                    if (j == 0 ){
+                        if (voxels[n].center[1] - dy / 2 > y_start) // i.e. it is not a process aligned with bottom physical boundary
+                        {
+                            // First connect this to right neighbour then right neighbour to this.
+                            connected_voxel_indices[n].push_back(n + j_jump);
+                            //connect_voxels_indices_only(n, n + j_jump, dS_xz);        // Guranteed that adjacent local index will be present
+                            connected_voxel_global_indices[n].push_back(voxels[n + j_jump].global_mesh_index);
+                            //connect_voxels_global_indices_only(n, n + j_jump, dS_xz); // Guranteed that global adjacent index will be present
 
-        for (int k = 0; k < z_coordinates.size(); k++)
-        {
-            for (int i = 0; i < x_coordinates.size(); i++)
-            {
-                int n = voxel_index(i, 0, k);               // Returns local index of voxel
-                if (voxels[n].center[1] - dy / 2 > y_start) // i.e. it is not a process aligned with bottom physical boundary
-                {
-                    // First connect this to right neighbour then right neighbour to this.
-                    connect_voxels_indices_only(n, n + j_jump, dS_xz);        // Guranteed that adjacent local index will be present
-                    connect_voxels_global_indices_only(n, n + j_jump, dS_xz); // Guranteed that global adjacent index will be present
+                            //connected_voxel_indices[n].push_back(-1);                                                 // There is no local left neighbour
+                            connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index - j_global_jump); // But there is a neighbour on previous process, so use global index
+                        }
+                        else // It is the process that is aligned with left physical boundary
+                        {
+                            connected_voxel_indices[n].push_back(n + j_jump);
+                            connected_voxel_global_indices[n].push_back(voxels[n + j_jump].global_mesh_index);
+                            //connect_voxels_indices_only(n, n + j_jump, dS_xz);        // Guranteed that adjacent local index will be present
+                            //connect_voxels_global_indices_only(n, n + j_jump, dS_xz); // Guranteed that global adjacent index will be present
+                                                                                    // No downward local OR global voxel is present
+                        }
+                    }
+                    if (j == y_size -1) {
+                         if (voxels[n].center[1] + dy / 2 < y_end)            // i.e. it is not a process aligned with right physical boundary
+                        {
+                            //connected_voxel_indices[n].push_back(-1);                                                 // There is no local right neighbour
+                            connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index + j_global_jump); // But there is a neighbour on next process, so use global index
+                        }
+                        else // It is the process that is aligned with right physical boundary
+                        {
+                            // There is no right local or neighbour across this process. Do nothing.
+                        }
+                    }
+                    //Z-aligned
+                    if ( k > 0 and k < z_size - 1){
+                        connected_voxel_indices[n].push_back(n + k_jump);
+                        connected_voxel_indices[n].push_back(n - k_jump);
+                        //connect_voxels_indices_only(n, n + k_jump, dS_xy);
+                        connected_voxel_global_indices[n].push_back(voxels[n + k_jump].global_mesh_index);
+                        connected_voxel_global_indices[n].push_back(voxels[n - k_jump].global_mesh_index);
+                        //connect_voxels_global_indices_only(n, n + k_jump, dS_xy);
+                    }
+                    if (k == 0) {
+                        if (voxels[n].center[2] - dz / 2 > z_start) // i.e. it is not a process aligned with bottom physical boundary
+                        {
+                            // First connect this to right neighbour then right neighbour to this.
+                            connected_voxel_indices[n].push_back(n + k_jump);
+                            //connect_voxels_indices_only(n, n + k_jump, dS_xy);        // Guranteed that adjacent local index will be present
+                            connected_voxel_global_indices[n].push_back(voxels[n + k_jump].global_mesh_index);
+                            //connect_voxels_global_indices_only(n, n + k_jump, dS_xy); // Guranteed that global adjacent index will be present
 
-                    connected_voxel_indices[n].push_back(-1);                                                 // There is no local left neighbour
-                    connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index - j_global_jump); // But there is a neighbour on previous process, so use global index
-                }
-                else // It is the process that is aligned with left physical boundary
-                {
-                    connect_voxels_indices_only(n, n + j_jump, dS_xz);        // Guranteed that adjacent local index will be present
-                    connect_voxels_global_indices_only(n, n + j_jump, dS_xz); // Guranteed that global adjacent index will be present
-                                                                              // No downward local OR global voxel is present
-                }
-            }
-        }
-
-        // Upper boundary of each sub-domain
-
-        for (int k = 0; k < z_coordinates.size(); k++)
-        {
-            for (int i = 0; i < x_coordinates.size(); i++)
-            {
-                int n = voxel_index(i, y_coordinates.size() - 1, k); // Returns local index of voxel
-                if (voxels[n].center[1] + dy / 2 < y_end)            // i.e. it is not a process aligned with right physical boundary
-                {
-                    connected_voxel_indices[n].push_back(-1);                                                 // There is no local right neighbour
-                    connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index + j_global_jump); // But there is a neighbour on next process, so use global index
-                }
-                else // It is the process that is aligned with right physical boundary
-                {
-                    // There is no right local or neighbour across this process. Do nothing.
+                            //connected_voxel_indices[n].push_back(-1);                                                 // There is no local left neighbour
+                            connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index - k_global_jump); // But there is a neighbour on previous process, so use global index
+                        }
+                        else // It is the process that is aligned with left physical boundary
+                        {
+                            connected_voxel_indices[n].push_back(n + k_jump);
+                            //connect_voxels_indices_only(n, n + k_jump, dS_xy);        // Guranteed that adjacent local index will be present
+                            connected_voxel_global_indices[n].push_back(voxels[n + k_jump].global_mesh_index);
+                            //connect_voxels_global_indices_only(n, n + k_jump, dS_xy); // Guranteed that global adjacent index will be present
+                                                                                    // No downward local OR global voxel is present
+                        }
+                    }
+                    if (k == z_size -1){
+                        if (voxels[n].center[2] + dz / 2 < z_end)            // i.e. it is not a process aligned with right physical boundary
+                        {
+                            //connected_voxel_indices[n].push_back(-1);                                                 // There is no local right neighbour
+                            connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index + k_global_jump); // But there is a neighbour on next process, so use global index
+                        }
+                        else // It is the process that is aligned with right physical boundary
+                        {
+                            // There is no right local or neighbour across this process. Do nothing.
+                        }
+                    }
                 }
             }
         }
         
-        /*--------------------------------------------------------------------------*/
-        /*                  Z-aligned connections                                   */
-        /*                Again broken into three parts                             */
-        /*--------------------------------------------------------------------------*/
-        
-        for (int j = 0; j < y_coordinates.size(); j++)
-        {
-            for (int i = 0; i < x_coordinates.size(); i++)
-            {
-                for (int k = 1; k < z_coordinates.size() - 1; k++)
-                {
-                    int n = voxel_index(i, j, k);
-                    connect_voxels_indices_only(n, n + k_jump, dS_xy);
-                    connect_voxels_global_indices_only(n, n + k_jump, dS_xy);
-                }
-            }
-        }
-
-        // Front boundary of each sub-domain
-
-        for (int j = 0; j < y_coordinates.size(); j++)
-        {
-            for (int i = 0; i < x_coordinates.size(); i++)
-            {
-                int n = voxel_index(i, j, 0);               // Returns local index of voxel
-                if (voxels[n].center[2] - dz / 2 > z_start) // i.e. it is not a process aligned with bottom physical boundary
-                {
-                    // First connect this to right neighbour then right neighbour to this.
-                    connect_voxels_indices_only(n, n + k_jump, dS_xy);        // Guranteed that adjacent local index will be present
-                    connect_voxels_global_indices_only(n, n + k_jump, dS_xy); // Guranteed that global adjacent index will be present
-
-                    connected_voxel_indices[n].push_back(-1);                                                 // There is no local left neighbour
-                    connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index - k_global_jump); // But there is a neighbour on previous process, so use global index
-                }
-                else // It is the process that is aligned with left physical boundary
-                {
-                    connect_voxels_indices_only(n, n + k_jump, dS_xy);        // Guranteed that adjacent local index will be present
-                    connect_voxels_global_indices_only(n, n + k_jump, dS_xy); // Guranteed that global adjacent index will be present
-                                                                              // No downward local OR global voxel is present
-                }
-            }
-        }
-
-        // Back boundary of each sub-domain
-
-        for (int j = 0; j < y_coordinates.size(); j++)
-        {
-            for (int i = 0; i < x_coordinates.size(); i++)
-            {
-                int n = voxel_index(i, j, z_coordinates.size() - 1); // Returns local index of voxel
-                if (voxels[n].center[2] + dz / 2 < z_end)            // i.e. it is not a process aligned with right physical boundary
-                {
-                    connected_voxel_indices[n].push_back(-1);                                                 // There is no local right neighbour
-                    connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index + k_global_jump); // But there is a neighbour on next process, so use global index
-                }
-                else // It is the process that is aligned with right physical boundary
-                {
-                    // There is no right local or neighbour across this process. Do nothing.
-                }
-            }
-        }
+        //end_time = std::chrono::high_resolution_clock::now();
+        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        //std::cout << "  Time taken 1.6: " << duration_ms << "ms" << std::endl;
 
         /*--------------------------------------------------------------------------------------------------------------------------- */
         /* In the example that I am following, use_voxel_faces is false, hence no need to parallelize this yet.                       */
         /* This is very similar to finding neighbours of voxels but most importantly, the connected_voxels_indices[] vector           */
         /* is again initialized over here.                                                                                            */
         /*--------------------------------------------------------------------------------------------------------------------------- */
-        
+        //start_time = std::chrono::high_resolution_clock::now();
+        //if (tid == 1) {
         if (use_voxel_faces)
         {
             create_voxel_faces();
         }
-        
+        //}
+        //end_time = std::chrono::high_resolution_clock::now();
+        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        //std::cout << "  Time taken 1.7: " << duration_ms << "ms" << std::endl;
         /*--------------------------------------------------------------------------------------------------------------------------- */
         /* Moore neighbourhood is possibly not used anywhere, hence leave parallelization for later
         /*--------------------------------------------------------------------------------------------------------------------------- */
-
+        //start_time = std::chrono::high_resolution_clock::now();
         create_moore_neighborhood();
+        
+        
+        //end_time = std::chrono::high_resolution_clock::now();
+        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        //std::cout << "  Time taken 1.6: " << duration_ms << "ms" << std::endl;
         return;
     }
 
@@ -724,7 +734,8 @@ namespace BioFVM
         /* size of datum remains the same                                                         */
         /*----------------------------------------------------------------------------------------*/
 
-        int number_of_data_entries = mesh.voxels.size();
+        long int number_of_data_entries = mesh.voxels.size();
+        
         int size_of_each_datum = 3 + 1 + number_of_densities(); 
 
         // Possibly we do not need to return anything over here, we can write a separate file at Master
@@ -819,6 +830,10 @@ namespace BioFVM
             M.mesh.y_size = M.mesh.y_coordinates.size();
             M.mesh.z_size = M.mesh.z_coordinates.size();
             M.mesh.n_substrates = M.number_of_densities();
+
+            M.thomas_i_jump = M.mesh.y_size * M.mesh.z_size * M.mesh.n_substrates;
+            M.thomas_j_jump = M.mesh.z_size * M.mesh.n_substrates;
+            M.thomas_k_jump = M.mesh.n_substrates;
 
             int y_size = M.mesh.y_coordinates.size();
             int z_size = M.mesh.z_coordinates.size();
@@ -1552,7 +1567,7 @@ namespace BioFVM
         /*
         string path  = "./timing/voxels_" + std::to_string((int)cube_side/2.0) + "/substrates_" + std::to_string(M.mesh.n_substrates) 
         + "/factor_" + std::to_string(factor) +  "/" + std::to_string(mpi_size) + "_node.csv";*/
-        std::ofstream file(M.timing_csv, std::ios::app);
+        //std::ofstream file(M.timing_csv, std::ios::app);
         int vl = 4;
 
         if (M.diffusion_solver_setup_done == false) {
@@ -1560,11 +1575,23 @@ namespace BioFVM
             MPI_Request send_req[size];
             MPI_Request recv_req[size];
             
+            M.mesh.x_size = M.mesh.x_coordinates.size();
+            M.mesh.y_size = M.mesh.y_coordinates.size();
+            M.mesh.z_size = M.mesh.z_coordinates.size();
+            M.mesh.n_substrates = M.number_of_densities();
+
+            M.thomas_i_jump = M.mesh.y_size * M.mesh.z_size * M.mesh.n_substrates;
+            M.thomas_j_jump = M.mesh.z_size * M.mesh.n_substrates;
+            M.thomas_k_jump = M.mesh.n_substrates;
+
+
             vector<double> zero(M.mesh.n_substrates, 0.0);
             vector<double> one(M.mesh.n_substrates, 1.0);
             double dt = 0.01;
 
             int step_size = (M.mesh.z_size * M.mesh.y_size) / granurality;
+            
+
 
             M.snd_data_size = step_size * M.mesh.n_substrates; // Number of data elements to be sent
             M.rcv_data_size = step_size * M.mesh.n_substrates; // All p_density_vectors elements have same size, use anyone
@@ -1603,7 +1630,7 @@ namespace BioFVM
 
             int i_jump = M.mesh.y_size*M.mesh.z_size*M.mesh.n_substrates;
             int j_jump = M.mesh.z_size*M.mesh.n_substrates;
-            int k_jump = M.mesh.n_substrates; // M.thomas_j_jump * M.mesh.y_coordinates.size();
+            int k_jump = M.mesh.n_substrates; 
 
             /*-------------------------------------------------------------*/
             /* This part below of defining constants SHOULD typically      */
@@ -1743,7 +1770,7 @@ namespace BioFVM
                 axpy(&M.thomas_denomz[i], M.thomas_constant1, M.thomas_cz[i - 1]);
                 M.thomas_cz[i] /= M.thomas_denomz[i]; // the value at  size-1 is not actually used
             }
-            M.diffusion_solver_vectorized_setup_done = true;
+            M.diffusion_solver_setup_done = true;
             //if (rank == 0) file << "X-diffusion,Y-diffusion,Z-diffusion,Apply Dirichlet" << std::endl;
         }
         if (M.diffusion_solver_vectorized_setup_done == false) {
@@ -1804,13 +1831,14 @@ namespace BioFVM
                     dest_cz+=M.mesh.n_substrates;
                 }
             }
+            
             /*
             string path  = "./timing/voxels_" + std::to_string((int)cube_side/2.0) + "/substrates_" + std::to_string(number_of_densities) 
             + "/factor_" + std::to_string(factor) +  "/" + std::to_string(mpi_size) + "_node.csv";*/
-            std::ofstream file(M.timing_csv, std::ios::app);
-            if (rank == 0) {
-                file << "X-diffusion,Y-diffusion,Z-diffusion,Apply Dirichlet" << std::endl;
-            }
+            //std::ofstream file(M.timing_csv, std::ios::app);
+            //if (rank == 0) {
+            //    file << "X-diffusion,Y-diffusion,Z-diffusion,Apply Dirichlet" << std::endl;
+            //}
             M.diffusion_solver_vectorized_setup_done = true;
             } 
     
@@ -1947,7 +1975,7 @@ namespace BioFVM
                     int initial_index = step * M.snd_data_size;
                     int limit = (initial_index + M.snd_data_size);
                     int limit_vec = limit - (M.snd_data_size%vl);
-                    MPI_Wait(&recv_req[step], MPI_STATUS_IGNORE);
+                    MPI_Wait(&(recv_req[step]), MPI_STATUS_IGNORE);
                     #pragma omp parallel for
                     for (int index = initial_index; index < limit; index += vl)
                     {
@@ -2277,8 +2305,8 @@ namespace BioFVM
     auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
     //cout << "Peto aqui2!" << endl;
 
-    if (rank == 0)
-        file << duration_us << ",";
+    //if (rank == 0)
+        //file << duration_us << ",";
     start_time = std::chrono::high_resolution_clock::now();
     M.apply_dirichlet_conditions(rank, size);
     end_time = std::chrono::high_resolution_clock::now();
@@ -2392,8 +2420,8 @@ namespace BioFVM
     }
     end_time = std::chrono::high_resolution_clock::now();
     duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-    if (rank == 0)
-        file << duration_us << ",";
+    //if (rank == 0)
+        //file << duration_us << ",";
     M.apply_dirichlet_conditions_v2(rank, size);
     end_time = std::chrono::high_resolution_clock::now();
     apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
@@ -2449,14 +2477,14 @@ namespace BioFVM
     end_time = std::chrono::high_resolution_clock::now();
     duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
     if (rank == 0)
-        file << duration_us << ",";
+        //file << duration_us << ",";
     
     start_time = std::chrono::high_resolution_clock::now();
     M.apply_dirichlet_conditions_v2(rank, size);
     end_time = std::chrono::high_resolution_clock::now();
     apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-     if (rank == 0)
-        file << apply_us/4.0 << std::endl;
+     //if (rank == 0)
+        //file << apply_us/4.0 << std::endl;
     }   
 
     //-->Had to create a function like this else compiler complains of undefined reference to this function due to call in initialize_microenvironment() in microenvironment.cpp

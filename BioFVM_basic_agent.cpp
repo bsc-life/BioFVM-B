@@ -136,12 +136,17 @@ void Basic_Agent::update_voxel_index(int mpi_Rank, int *mpi_Dims)
 	
 	if( !get_microenvironment()->mesh.is_position_valid(position[0],position[1],position[2]))
 	{	
+		std::cout << "Invalid position detected "  << position[0] << " " << position[1] << " " << position[2] << std::endl;
+		std::cout << "ID " << ID << std::endl;
 		current_voxel_index=-1;
 		is_active=false;
 		return;
 	}
-	current_voxel_index= microenvironment->mesh.nearest_voxel_local_index( position, mpi_Rank, mpi_Dims );
-	
+	int aux = get_microenvironment()->mesh.nearest_voxel_local_index( position, mpi_Rank, mpi_Dims );
+	if (aux < 0) aux = 0;
+	if (aux >= get_microenvironment()->mesh.voxels.size()) aux = get_microenvironment()->mesh.voxels.size() -1;
+	//current_voxel_index= microenvironment->mesh.nearest_voxel_local_index( position, mpi_Rank, mpi_Dims );
+	current_voxel_index = aux;
 }
 
 void Basic_Agent::set_internal_uptake_constants( double dt )

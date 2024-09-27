@@ -123,8 +123,6 @@ namespace BioFVM
 
 		// [xmin ymin zmin xmax ymax zmax ]
 		std::vector<double> bounding_box;
-
-		//std::vector<Voxel> voxels; Jose
 		std::vector<Voxel> voxels;
 		std::vector<Voxel_Face> voxel_faces;
 		// each voxel[k] has a list of connected voxels -- helpful for some numerical methods
@@ -225,7 +223,7 @@ namespace BioFVM
 
 		void read_from_matlab(std::string filename);
 		//Jose begin
-		inline Voxel &voxel_find(int x, int y, int z);
+		//inline Voxel &voxel_find(int x, int y, int z);
 		//Jose end
 	};
 

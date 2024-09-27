@@ -56,8 +56,8 @@ namespace BioFVM
 	std::string BioFVM_URL;
 	*/
 
-	std::vector<std::chrono::steady_clock::time_point> vector_tic(10);
-	std::vector<std::chrono::steady_clock::time_point> vector_toc(10);
+	//std::vector<std::chrono::steady_clock::time_point> vector_tic(10);
+	//std::vector<std::chrono::steady_clock::time_point> vector_toc(10);
 
 	std::chrono::steady_clock::time_point tic_time;
 	std::chrono::steady_clock::time_point toc_time;
@@ -79,13 +79,13 @@ namespace BioFVM
 
 	void TIC(int chrono)
 	{
-		vector_tic[chrono] = std::chrono::steady_clock::now();
+		//vector_tic[chrono] = std::chrono::steady_clock::now();
 	}
 
 	double TOC(int chrono)
 	{
-		vector_toc[chrono] = std::chrono::steady_clock::now();
-		return stopwatch_value(chrono);
+		//vector_toc[chrono] = std::chrono::steady_clock::now();
+		return 0.0;//  stopwatch_value(chrono);
 	}
 
 	void RUNTIME_TIC(void)
@@ -107,9 +107,9 @@ namespace BioFVM
 	
 	double stopwatch_value(int chrono)
 	{
-		static std::chrono::duration<double> time_span;
-		time_span = std::chrono::duration_cast<std::chrono::duration<double>>(vector_toc[chrono] - vector_tic[chrono]);
-		return time_span.count();
+		//static std::chrono::duration<double> time_span;
+		//time_span = std::chrono::duration_cast<std::chrono::duration<double>>(vector_toc[chrono] - vector_tic[chrono]);
+		return 0; //time_span.count();
 	}
 
 	double runtime_stopwatch_value(void)

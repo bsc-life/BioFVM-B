@@ -1,6 +1,8 @@
 *.o
 *.log
+*.sh
 error*
 output*
 output/*
 extrae.xml
+.vscode

@@ -147,6 +147,7 @@ void create_point_sources(double cell_radius, double dt, int num_sources, Microe
                 proc_x_coord = (mpi_Dims[0] - 1) - floor(tempPoint[1]/(local_y_voxels * dy));  //Automatic promotion to double was creating problems
                 proc_z_coord = tempPoint[2]/(local_z_voxels * dz);                             //Can use floor() here but no need
                 proc_index_rank = proc_x_coord * mpi_Dims[1] * mpi_Dims[2] + proc_y_coord * mpi_Dims[2] + proc_z_coord;
+                if (proc_index_rank >= mpi_Size) proc_index_rank = mpi_Size -1;
 
                 vector_coords[proc_index_rank].push_back(tempPoint[0]);          //Create a list of coordinates for a particular rank
                 vector_coords[proc_index_rank].push_back(tempPoint[1]);          //i.e. for some rank 'r', vector_coords[r] = tempPoint[0]-->temPoint[1]-->temPoint[2]
@@ -322,6 +323,8 @@ void create_point_sinks(double cell_radius, double dt, int num_sinks, Microenvir
                 proc_z_coord = tempPoint[2]/(local_z_voxels * dz);
 
                 proc_index_rank = proc_x_coord * mpi_Dims[1] * mpi_Dims[2] + proc_y_coord * mpi_Dims[2] + proc_z_coord;
+
+                if (proc_index_rank >= mpi_Size) proc_index_rank = mpi_Size -1;
 
                 vector_coords[proc_index_rank].push_back(tempPoint[0]);          //Create a list of coordinates for a particular rank
                 vector_coords[proc_index_rank].push_back(tempPoint[1]);          //i.e. for some rank 'r', vector_coords[r] = tempPoint[0]-->temPoint[1]-->temPoint[2]
@@ -508,13 +511,15 @@ int main( int argc, char* argv[] )
 	/*------------------------------------------------------------*/
 	/* Resize local Microenvironment on each process 	      */
 	/*------------------------------------------------------------*/
-
+    //auto start_time = std::chrono::high_resolution_clock::now();
     t_start = MPI_Wtime();
 	microenvironment.resize_space_uniform( minX,maxX,minY,maxY,minZ,maxZ, mesh_resolution, mpi_Dims, mpi_Coords);
     t_end = MPI_Wtime();
     if(mpi_Rank==0)
         std::cout<<"TIME FOR RESIZING MICROENVIRONMENT = "<< (t_end-t_start)<< std::endl;
-
+    //auto end_time = std::chrono::high_resolution_clock::now();
+    //auto duration_ms = std::chrono::duration_cast<std::chrono::seconds>(end_time - start_time).count();
+    //std::cout << "  Time taken 1.6: " << duration_ms << "ms" << std::endl;
 
 
 	std::vector<double> center(3);
@@ -540,8 +545,10 @@ int main( int argc, char* argv[] )
     if(mpi_Rank==0)
         std::cout<<"TIME FOR GENERATING GAUSSIAN PROFILE = "<< (t_end-t_start)<< std::endl;
 
+    MPI_Barrier(mpi_Cart_comm);
 	t_start = MPI_Wtime();
-    microenvironment.write_to_matlab( "/home/bsc/bsc008383/CI/biofvm-b/output/initial_concentration.mat", mpi_Rank, mpi_Size, mpi_Cart_comm );
+    string initial = "/gpfs/scratch/bsc08/bsc008383/outputs/initial_concentration_" + to_string(N) + "_" + to_string(mpi_Size) + ".mat";
+    microenvironment.write_to_matlab( initial, mpi_Rank, mpi_Size, mpi_Cart_comm );
     t_end = MPI_Wtime();
     if(mpi_Rank==0)
         std::cout<<"TIME FOR WRITING INITIAL CONCENTRATION FILE = "<< (t_end-t_start)<< std::endl;
@@ -583,8 +590,10 @@ int main( int argc, char* argv[] )
 	if(mpi_Rank==0)
         std::cout<<"TIME FOR SIMULATING (SOURCES+SINKS+DIFFUSION) = "<< (t_end-t_start)<< std::endl;
 
+    string final = "/gpfs/scratch/bsc08/bsc008383/outputs/final_concentration_" + to_string(N) + "_" + to_string(mpi_Size) + ".mat";
+    MPI_Barrier(mpi_Cart_comm);
 	t_start = MPI_Wtime();
-    microenvironment.write_to_matlab( "/home/bsc/bsc008383/CI/biofvm-b/output/final.mat", mpi_Rank, mpi_Size, mpi_Cart_comm );            //Remember to use Parallel Version !
+    microenvironment.write_to_matlab( final, mpi_Rank, mpi_Size, mpi_Cart_comm );            //Remember to use Parallel Version !
     t_end = MPI_Wtime();
     if(mpi_Rank==0)
         std::cout<<"TIME FOR WRITING FINAL FILE = "<< (t_end-t_start)<< std::endl;

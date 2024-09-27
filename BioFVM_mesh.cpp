@@ -135,7 +135,7 @@ namespace BioFVM
 		//cout << "General Mesh initialization in progress" << endl;
 		
 		// x1, x2, y1, y2, z1, z2
-		bounding_box.assign(6, 0.0);
+		bounding_box.resize(6, 0.0);
 		bounding_box[mesh_min_x_index] = -0.5;
 		bounding_box[mesh_min_y_index] = -0.5;
 		bounding_box[mesh_min_z_index] = -0.5;
@@ -211,11 +211,11 @@ namespace BioFVM
 			return false;
 		return true;
 	}
-
+	/*
 	//Jose function
 	inline Voxel &Cartesian_Mesh::voxel_find(int x, int y, int z){
 		return voxels[((x * y_size) + y)*z_size + z];
-	}
+	}*/
 
 	void General_Mesh::connect_voxels_faces_only(int i, int j, double SA) // done
 	{ /*
@@ -624,13 +624,29 @@ namespace BioFVM
 	{
 		// Even if we don't parallelize it, it is causing no harm as it populates om moore_connected_voxel_indices[] vector.
 		moore_connected_voxel_indices.resize(voxels.size());
-		for (int j = 0; j < y_coordinates.size(); j++)
+		for (int i = 0; i < x_coordinates.size(); i++)
 		{
-			for (int i = 0; i < x_coordinates.size(); i++)
+			for (int j = 0; j < y_coordinates.size(); j++)
 			{
 				for (int k = 0; k < z_coordinates.size(); k++)
 				{
 					int center_inex = voxel_index(i, j, k);
+					/*int size = 26 - int(i == 0) - int(i == x_coordinates.size() -1)
+								 - int(j == 0) - int(j == y_coordinates.size() -1)
+								 - int(k == 0) - int(k == z_coordinates.size() -1);*/
+					int size = 0;
+					for (int ii = -1; ii <= 1; ii++)
+						for (int jj = -1; jj <= 1; jj++)
+							for (int kk = -1; kk <= 1; kk++)
+								if (i + ii >= 0 && i + ii < x_coordinates.size() &&
+									j + jj >= 0 && j + jj < y_coordinates.size() &&
+									k + kk >= 0 && k + kk < z_coordinates.size() &&
+									!(ii == 0 && jj == 0 && kk == 0))
+								{
+									++size;
+								}
+					moore_connected_voxel_indices[center_inex].resize(size, 0);
+					int neighbor = 0;
 					for (int ii = -1; ii <= 1; ii++)
 						for (int jj = -1; jj <= 1; jj++)
 							for (int kk = -1; kk <= 1; kk++)
@@ -640,7 +656,8 @@ namespace BioFVM
 									!(ii == 0 && jj == 0 && kk == 0))
 								{
 									int neighbor_index = voxel_index(i + ii, j + jj, k + kk);
-									moore_connected_voxel_indices[center_inex].push_back(neighbor_index);
+									moore_connected_voxel_indices[center_inex][neighbor] = neighbor_index;
+									++neighbor;
 								}
 				}
 			}

@@ -162,6 +162,8 @@ namespace BioFVM
 		granurality = 1;
 		// Jose end
 
+		density_names.assign(1, "unnamed");
+		density_units.assign(1, "none");
 		
 		if (diffusion_decay_solver != diffusion_decay_explicit_uniform_rates)
 		{
@@ -186,8 +188,6 @@ namespace BioFVM
 		bulk_supply_target_densities_function = zero_function;
 		bulk_uptake_rate_function = zero_function;
 
-		density_names.assign(1, "unnamed");
-		density_units.assign(1, "none");
 
 		diffusion_coefficients.assign(number_of_densities(), 0.0);
 		decay_rates.assign(number_of_densities(), 0.0);
