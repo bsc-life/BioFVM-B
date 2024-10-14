@@ -97,7 +97,8 @@ namespace BioFVM
 		return;
 	}
 
-	void zero_function(Microenvironment *pMicroenvironment, int voxel_index, double *write_destination)
+	//BioFVM-B
+	void zero_function(Microenvironment *pMicroenvironment, int voxel_index, double *write_destination) 
 	{
 		for (int i = 0; i < (*pMicroenvironment).number_of_densities(); i++)
 		{
@@ -114,7 +115,7 @@ namespace BioFVM
 		}
 		return;
 	}
-
+	//BioFVM-B
 	void one_function(Microenvironment *pMicroenvironment, int voxel_index, double *write_destination)
 	{
 		for (int i = 0; i < (*pMicroenvironment).number_of_densities(); i++)
@@ -155,12 +156,10 @@ namespace BioFVM
 		one.resize(1, 1.0);
 		zero.resize(1, 0.0);
 
-		// Jose begin
 		mesh.x_size = 1;
 		mesh.y_size = 1;
 		mesh.z_size = 1;
 		granurality = 1;
-		// Jose end
 
 		density_names.assign(1, "unnamed");
 		density_units.assign(1, "none");
@@ -237,7 +236,6 @@ namespace BioFVM
 	void Microenvironment::add_dirichlet_node(int x, int y, int z, std::vector<double> &value)
 	{
 		voxels(x,y,z).is_Dirichlet = true;
-		//(*(dirichlet_value_vectors[x]))[y*mesh.z_size+z] = value;
 		int index = x*mesh.y_size*mesh.z_size*number_of_densities() + 
 					y*mesh.z_size*number_of_densities() +
 					z*number_of_densities();
@@ -338,7 +336,7 @@ namespace BioFVM
 	
 		print_voxels_densities( *this, dt, mpi_Size, mpi_Rank, mpi_Coords, file_name , mpi_Dims, mpi_Cart_comm );
 	}
-	//#define DIRICHLET_VALUE_VECTOR(X,Y,Z) (*(dirichlet_value_vectors[X]))[Y*mesh.z_size+Z]
+	
 	void Microenvironment::apply_dirichlet_conditions( int rank, int size)
 	{
 		int x_begin = 0;
@@ -738,7 +736,6 @@ namespace BioFVM
 		temporary_density_vectors2.insert(it2, 0.0);
 		}
 
-
 		// resize the gradient data structures
 		for (int k = 0; k < mesh.voxels.size(); k++)
 		{
@@ -866,7 +863,7 @@ namespace BioFVM
 		one_third = one;
 		one_third /= 3.0;
 
-		dirichlet_value_vectors.assign(mesh.x_size*mesh.y_size*mesh.z_size*number_of_densities(), 1.0); //Jose
+		dirichlet_value_vectors.assign(mesh.x_size*mesh.y_size*mesh.z_size*number_of_densities(), 1.0);
 		dirichlet_activation_vector.assign(number_of_densities(), true);
 
 		default_microenvironment_options.Dirichlet_condition_vector = one;
@@ -1222,7 +1219,7 @@ void Microenvironment::simulate_diffusion_decay( double dt, int mpi_Size, int mp
 		{
 			for( unsigned int j=0; j < mesh.y_coordinates.size() ; j++ )
 			{
-				int n = voxel_index(0,j,k); //Jose: se ha de computar segun rank
+				int n = voxel_index(0,j,k); 
 				int density_index = n * subs_num; 
 				// endcaps 
 				for( unsigned int q=0; q < subs_num ; q++ )
@@ -1569,7 +1566,7 @@ void Microenvironment::compute_gradient_vector( int n ) {
 		// register the diffusion solver
 		if (default_microenvironment_options.simulate_2D == true)
 		{
-			//microenvironment.diffusion_decay_solver = diffusion_decay_solver__constant_coefficients_LOD_2D; 
+			microenvironment.diffusion_decay_solver = diffusion_decay_solver__constant_coefficients_LOD_2D; 
 		}
 		else
 		{
@@ -1645,6 +1642,7 @@ void Microenvironment::compute_gradient_vector( int n ) {
 		return;
 	}
 
+	//BioFVM-B for testing porpuses
 	bool Microenvironment::compare_microenvironment(Microenvironment reference) {
 		bool identical = true;
 		//bool* identicals = new bool[cart_topo.mpi_dims[1]];

@@ -211,14 +211,10 @@ namespace BioFVM
 			return false;
 		return true;
 	}
-	/*
-	//Jose function
-	inline Voxel &Cartesian_Mesh::voxel_find(int x, int y, int z){
-		return voxels[((x * y_size) + y)*z_size + z];
-	}*/
+	
 
 	void General_Mesh::connect_voxels_faces_only(int i, int j, double SA) // done
-	{ /*
+	{ 
 		// check to see if the voxels are connected -- implement later!
 
 		// create a new Voxel_Face connecting i to j
@@ -243,7 +239,7 @@ namespace BioFVM
 
 		voxel_faces.push_back(VF1);
 
-		return;*/
+		return;
 	}
 
 	// Function rewritten in BioFVM_parallel.c - though it is identical to this.
@@ -262,7 +258,6 @@ namespace BioFVM
 
 	void General_Mesh::connect_voxels(int i, int j, double SA)
 	{
-		/*
 		
 		// check to see if the voxels are connected -- implement later!
 
@@ -288,11 +283,11 @@ namespace BioFVM
 
 		voxel_faces.push_back(VF1);
 
-		return;*/
+		return;
 	}
 
 	void General_Mesh::display_information(std::ostream &os)
-	{ /*
+	{ 
 		os << std::endl
 		   << "Mesh information: " << std::endl
 		   << "type: general mesh" << std::endl
@@ -311,17 +306,18 @@ namespace BioFVM
 		}
 		os << total_volume << " cubic " << units << std::endl;
 
-		return; */
+		return; 
 	}
 
 	void General_Mesh::write_to_matlab(std::string filename)
-	{ /*
+	{ 
 		int number_of_data_entries = voxels.size();
 		int size_of_each_datum = 3 + 1; // x,y,z, volume
 
 		FILE *fp = write_matlab_header(size_of_each_datum, number_of_data_entries, filename, "mesh");
 
 		// storing data as cols
+		//Buffering can be applied in future versions
 		for (int i = 0; i < number_of_data_entries; i++)
 		{
 			fwrite((char *)&(voxels[i].center[0]), sizeof(double), 1, fp);
@@ -330,11 +326,11 @@ namespace BioFVM
 			fwrite((char *)&(voxels[i].volume), sizeof(double), 1, fp);
 		}
 
-		fclose(fp);*/
+		fclose(fp);
 	}
 
 	void General_Mesh::read_from_matlab(std::string filename)
-	{ /*
+	{ 
 		int size_of_each_datum;
 		int number_of_data_entries;
 		FILE *fp = read_matlab_header(&size_of_each_datum, &number_of_data_entries, filename);
@@ -404,7 +400,7 @@ namespace BioFVM
 		std::cout << "Warning: General_Mesh::read_from_matlab is incomplete. No connection information read." << std::endl;
 
 		fclose(fp);
-		return;*/
+		return;
 	}
 
 	/* Cartesian meshes */
@@ -442,9 +438,7 @@ namespace BioFVM
 		Voxel template_voxel;
 		template_voxel.volume = dV;
 		
-		voxels.assign(x_coordinates.size() * y_coordinates.size() * z_coordinates.size(), template_voxel);
-		//voxels.assign(x_coordinates.size(), new std::vector<Voxel> (y_coordinates.size() * z_coordinates.size(), template_voxel) ); //, std::vector<Voxel>(y_coordinates.size() * z_coordinates.size())* aux);
-	
+		voxels.assign(x_coordinates.size() * y_coordinates.size() * z_coordinates.size(), template_voxel);	
 
 		voxels[0].center[0] = x_coordinates[0];
 		voxels[0].center[1] = y_coordinates[0];
@@ -622,7 +616,8 @@ namespace BioFVM
 
 	void Cartesian_Mesh::create_moore_neighborhood()
 	{
-		// Even if we don't parallelize it, it is causing no harm as it populates om moore_connected_voxel_indices[] vector.
+		//BioFVM-B optimized generation of creating moore neighbours
+		//Loops can be parallelized and collapsed but it has shown downgrades in performance
 		moore_connected_voxel_indices.resize(voxels.size());
 		for (int i = 0; i < x_coordinates.size(); i++)
 		{
@@ -631,9 +626,7 @@ namespace BioFVM
 				for (int k = 0; k < z_coordinates.size(); k++)
 				{
 					int center_inex = voxel_index(i, j, k);
-					/*int size = 26 - int(i == 0) - int(i == x_coordinates.size() -1)
-								 - int(j == 0) - int(j == y_coordinates.size() -1)
-								 - int(k == 0) - int(k == z_coordinates.size() -1);*/
+
 					int size = 0;
 					for (int ii = -1; ii <= 1; ii++)
 						for (int jj = -1; jj <= 1; jj++)
@@ -665,25 +658,28 @@ namespace BioFVM
 	}
 	int Cartesian_Mesh::voxel_index(int i, int j, int k)
 	{
-		// Wrote it in a slightly readable form ---> Gaurav Saxena
+		// BioFVM-B new layout
 		// size of x/y/z_coordinates is same as local_x/y/z_nodes
 
 		return ((i*y_size) +j)*z_size + k;
 	}
 	
+	//BioFVM-B header
+	//Pre: n is a voxel index with valid range
+	//Post: out is a 3 position vector with coordinates of n i -> (x,y,z)
 	std::vector<int> Cartesian_Mesh::cartesian_indices(int n)
 	{
 		std::vector<int> out(3, -1);
 
 		// figure out i;
-		int XY = x_coordinates.size() * y_coordinates.size();
-		out[2] = (int)floor(n / XY);
+		int YZ = y_coordinates.size() * z_coordinates.size();
+		out[0] = (int)floor(n / YZ);
 
 		// figure out j;
-		out[1] = (int)floor((n - out[2] * XY) / x_coordinates.size());
+		out[1] = (int)floor((n - out[0] * YZ) / z_coordinates.size());
 
 		// figure out k;
-		out[0] = n - x_coordinates.size() * (out[1] + y_coordinates.size() * out[2]);
+		out[2] = n - z_coordinates.size() * (out[1] + y_coordinates.size() * out[0]);
 
 		return out;
 	}
@@ -786,7 +782,7 @@ namespace BioFVM
                     aux.center[0] = x_coordinates[i];
                     aux.center[1] = y_coordinates[j];
                     aux.center[2] = z_coordinates[k];
-                    aux.mesh_index = voxel_index;                                                          // This now becomes the local index (Jose: will not be necessary)
+                    aux.mesh_index = voxel_index;                                                          // This now becomes the local index
                     aux.global_mesh_index = z_index + y_index + x_index; 
                     aux.volume = dV;
                     voxels[voxel_index] = aux; 
@@ -1101,19 +1097,19 @@ namespace BioFVM
 			os << ", dy = " << dy << " " << units
 			   << ", dz = " << dz << " " << units;
 		}
-		/*
+		
 		os << std::endl
 		   << "   voxels per process: " << voxels.size() << std::endl
 		   << "   voxel faces: " << voxel_faces.size() << std::endl
 		   << "   volume: " << (bounding_box[3] - bounding_box[0]) * (bounding_box[4] - bounding_box[1]) * (bounding_box[5] - bounding_box[2])
 		   << " cubic " << units << std::endl;
-			*/
+			
 		return;
 	}
 
 	void Cartesian_Mesh::read_from_matlab(std::string filename)
 	{
-		/*
+		
 		int size_of_each_datum;
 		int number_of_data_entries;
 		FILE *fp = read_matlab_header(&size_of_each_datum, &number_of_data_entries, filename);
@@ -1194,19 +1190,20 @@ namespace BioFVM
 		double xmax = bounding_box[3]; // voxels[n-1].center[0];
 		double ymax = bounding_box[4]; // voxels[n-1].center[1];
 		double zmax = bounding_box[5]; // voxels[n-1].center[2];
-
-		// figure out number of x nodes
-		int xnodes = 0;
-		while (fabs(voxels[xnodes].center[0] - xmax) > 1e-15)
+		
+		//This Logic depend on data layout
+		// figure out number of z nodes
+		int znodes = 0;
+		while (fabs(voxels[znodes].center[0] - zmax) > 1e-15)
 		{
-			xnodes++;
+			znodes++;
 		}
-		xnodes++;
+		znodes++;
 
 		// figure out number of y nodes
 		int ynodes = 0;
 
-		while (fabs(voxels[ynodes * xnodes].center[1] - ymax) > 1e-15)
+		while (fabs(voxels[ynodes * znodes].center[1] - ymax) > 1e-15)
 		{
 			ynodes += 1;
 		}
@@ -1214,13 +1211,13 @@ namespace BioFVM
 
 		// figure out number of z nodes
 
-		int znodes = 0;
+		int xnodes = 0;
 
-		while (fabs(voxels[ynodes * xnodes * znodes].center[2] - zmax) > 1e-15)
+		while (fabs(voxels[ynodes * xnodes * znodes].center[2] - xmax) > 1e-15)
 		{
-			znodes += 1;
+			xnodes += 1;
 		}
-		znodes++;
+		xnodes++;
 
 		// figure out differentials
 
@@ -1284,7 +1281,7 @@ namespace BioFVM
 		// still need to figure out connected indices later
 		std::cout << "Warning: Cartesian_Mesh::read_from_matlab is incomplete. No connection information read." << std::endl;
 
-		fclose(fp);*/
+		fclose(fp);
 		return;
 	}
 
@@ -1301,14 +1298,14 @@ namespace BioFVM
 		   << "   voxel faces: " << voxel_faces.size() << std::endl
 		   << "   volume: ";
 
-		/*
+		
 		double total_volume = 0.0;
 		for (int i = 0; i < voxels.size(); i++)
 		{
 			total_volume += voxels[i].volume;
 		}
 		os << total_volume << " cubic " << units << std::endl;
-		*/
+		
 		return;
 	}
 

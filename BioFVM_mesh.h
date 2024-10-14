@@ -222,9 +222,6 @@ namespace BioFVM
 		void display_information(std::ostream &os);
 
 		void read_from_matlab(std::string filename);
-		//Jose begin
-		//inline Voxel &voxel_find(int x, int y, int z);
-		//Jose end
 	};
 
 	class Voronoi_Mesh : public General_Mesh

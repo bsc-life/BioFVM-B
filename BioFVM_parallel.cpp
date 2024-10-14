@@ -25,23 +25,19 @@ namespace BioFVM
     /* partitioning in the x-direction. In addition, it initializes several other useful vectors. 		*/
     /*------------------------------------------------------------------------------------------------*/
 
-    // Jose
+   
     void Microenvironment::resize_space(double x_start, double x_end, double y_start, double y_end, double z_start, double z_end, double dx_new, double dy_new, double dz_new, int *dims, int *coords)
     {
-        //auto start_time = std::chrono::high_resolution_clock::now();
         mesh.resize(x_start, x_end, y_start, y_end, z_start, z_end, dx_new, dy_new, dz_new, dims, coords);
 
-        //auto end_time = std::chrono::high_resolution_clock::now();
-        //auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        //std::cout << "Time taken 1 : " << duration_ms << "ms" << std::endl;
-        int box_elements = mesh.x_size * mesh.y_size * mesh.z_size * number_of_densities();
-            
-        //start_time = std::chrono::high_resolution_clock::now();
+        //BioFVM-B  requires larger range than integer structure: Risk of overflow
+        long uint box_elements = mesh.x_size * mesh.y_size; 
+        box_elements *= * mesh.z_size;
+        box_elements *= number_of_densities();
+        
         temporary_density_vectors1.assign(box_elements, 0.0);
         temporary_density_vectors2.assign(box_elements, 0.0);
-        //end_time = std::chrono::high_resolution_clock::now();
-        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        //std::cout << "Time taken 2 : " << duration_ms << "ms" << std::endl;
+        
 
         //start_time = std::chrono::high_resolution_clock::now();
         gradient_vectors.resize(mesh.voxels.size());
@@ -54,20 +50,11 @@ namespace BioFVM
                 (gradient_vectors[k])[i].resize(3, 0.0);
             }
         }
-        //start_time = std::chrono::high_resolution_clock::now();
+        
         gradient_vector_computed.resize(mesh.voxels.size(), false);
-        //end_time = std::chrono::high_resolution_clock::now();
-        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        //std::cout << "Time taken 3 : " << duration_ms << "ms" << std::endl;
         
-        
-        
-        //start_time = std::chrono::high_resolution_clock::now();
         dirichlet_value_vectors.assign(box_elements, 100.0);
-        //end_time = std::chrono::high_resolution_clock::now();
-        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        //std::cout << "Time taken 4 : " << duration_ms << "ms" << std::endl;
-        //(*p_density_vectors).resize(box_elements);
+        
         return;
     }
 
@@ -126,17 +113,10 @@ namespace BioFVM
         x_size = local_x_nodes;
         y_size = local_y_nodes;
         z_size = local_z_nodes;
-        //auto start_time = std::chrono::high_resolution_clock::now();
-    
 
-       
         x_coordinates.assign(local_x_nodes, 0.0);
         y_coordinates.assign(local_y_nodes, 0.0);
         z_coordinates.assign(local_z_nodes, 0.0);
-        //auto end_time = std::chrono::high_resolution_clock::now();
-        //auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        //std::cout << "  Time taken 1.1 : " << duration_ms << "ms" << std::endl;
-
 
         uniform_mesh = true;
         regular_mesh = true;
@@ -145,7 +125,6 @@ namespace BioFVM
         {
             uniform_mesh = false;
         }
-        //start_time = std::chrono::high_resolution_clock::now();
         local_x_start = x_start + (coords[1] * local_x_nodes * dx);
         for (int i = 0; i < x_coordinates.size(); i++)
         {
@@ -163,9 +142,6 @@ namespace BioFVM
         {
             z_coordinates[i] = local_z_start + (i + 0.5) * dz;
         }
-        //end_time = std::chrono::high_resolution_clock::now();
-        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        //std::cout << "  Time taken 1.2 : " << duration_ms << "ms" << std::endl;
         /*--------------------------------------------*/
         /*		Global bounding Box	                  */
         /*--------------------------------------------*/
@@ -197,18 +173,13 @@ namespace BioFVM
         /*      total voxels = sum of voxels on MPI processes  */
         /*      Size of x/y/z_coordinates is local_x/y/z_nodes */
         /*-----------------------------------------------------*/
-        //start_time = std::chrono::high_resolution_clock::now();
+       
         voxels.assign(x_coordinates.size() * y_coordinates.size() * z_coordinates.size(), template_voxel);
-        //end_time = std::chrono::high_resolution_clock::now();
-        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        //std::cout << "  Time taken 1.3 : " << duration_ms << "ms" << std::endl;
-        //This depend on the indeaxation from BioFVM-B
+        //New layout BioFVM-B
         local_start_of_global_index = (coords[1] * z_nodes * y_nodes * local_x_nodes) +       //Imagine 3rd plate 'beginning' point (leftmost bottom point)
                                       (dims[0]-coords[0]-1) * z_nodes * local_y_nodes +       //Imagine going up in 3rd plate
                                       (coords[2] * local_z_nodes) ;
         
-        int n = 0;
-        //start_time = std::chrono::high_resolution_clock::now();
         #pragma omp parallel for collapse(3)
         for (int i = 0; i < x_coordinates.size(); i++)
         {
@@ -224,17 +195,13 @@ namespace BioFVM
                     aux.center[0] = x_coordinates[i];
                     aux.center[1] = y_coordinates[j];
                     aux.center[2] = z_coordinates[k];
-                    aux.mesh_index = n;
-                    aux.global_mesh_index = local_start_of_global_index + z_index + y_index + x_index; 
+                    aux.mesh_index = z_index + y_index + x_index;
+                    aux.global_mesh_index = local_start_of_global_index + aux.mesh_index; 
                     aux.volume = dV;               
                     voxels[x_index + y_index + z_index] = aux;
                 }
             }
         }
-        //end_time = std::chrono::high_resolution_clock::now();
-        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        //std::cout << "  Time taken 1.4: " << duration_ms << "ms" << std::endl;
-
         /*--------------------------*/
 	    /* Make Connections next ...*/
   	    /*--------------------------*/
@@ -257,17 +224,12 @@ namespace BioFVM
         /*      Then the size of the connected_voxels_indices gives number of neighbours  */
         /*--------------------------------------------------------------------------------*/
         
-        //Clear for safety
-        //start_time = std::chrono::high_resolution_clock::now();
         for (int i = 0; i < connected_voxel_indices.size(); i++)
         {
             connected_voxel_indices[i].clear();
             connected_voxel_global_indices[i].clear();
         }
-        //end_time = std::chrono::high_resolution_clock::now();
-        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        //std::cout << "  Time taken 1.5: " << duration_ms << "ms" << std::endl;
-
+       
         int i_jump = local_y_nodes * local_z_nodes; //Local x-jump
 	    int j_jump = local_z_nodes; //Local y-jump
 	    int k_jump = 1; //Local z-jump
@@ -286,174 +248,103 @@ namespace BioFVM
         int x_size = x_coordinates.size();
         int y_size = y_coordinates.size();
         int z_size = z_coordinates.size();
-        //start_time = std::chrono::high_resolution_clock::now();
-        
-        //int tid = omp_get_thread_num();
-        //if (tid == 0) {
+
+        //Optimized generation of if connected voxels with 1 dimensional displacement
         for (int i = 0; i < x_size; ++i) {
             for (int j = 0; j < y_size; ++j){
                 for (int k = 0; k < z_size; ++k) {
                     int n = voxel_index(i, j, k);
-                    //Right neighbours
+                    //X-neigbours
                     if ( i > 0 and i < x_size - 1){
                         connected_voxel_indices[n].push_back(n + i_jump);
                         connected_voxel_indices[n].push_back(n - i_jump);
-                        //connect_voxels_indices_only(n, n + i_jump, dS_yz);        // Guranteed that adjacent local index will be present
                         connected_voxel_global_indices[n].push_back(voxels[n + i_jump].global_mesh_index);
                         connected_voxel_global_indices[n].push_back(voxels[n - i_jump].global_mesh_index);
-                        //connect_voxels_global_indices_only(n, n + i_jump, dS_yz); // Guranteed that global adjacent index will be present
                     }
                     //Left boundary of each process
                     if (i == 0) {
-                        if (voxels[n].center[0] - dx / 2 > x_start) // i.e. it is not a process aligned with left physical boundary
-                        {
+                        if (voxels[n].center[0] - dx / 2 > x_start){
                             // First connect this to right neighbour then right neighbour to this.
                             connected_voxel_indices[n].push_back(n + i_jump);
-                            //connected_voxel_indices[n].push_back(n - i_jump);
-                            //connect_voxels_indices_only(n, n + i_jump, dS_yz);        // Guranteed that adjacent local index will be present
                             connected_voxel_global_indices[n].push_back(voxels[n + i_jump].global_mesh_index);
-                            //connect_voxels_global_indices[n].push_back(voxels[n - i_jump].global_mesh_index);
-                            //connect_voxels_global_indices_only(n, n + i_jump, dS_yz); // Guranteed that global adjacent index will be present
-
-                            //connected_voxel_indices[n].push_back(-1);                                                 // There is no local left neighbour
-                            connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index - i_global_jump); // But there is a neighbour on previous process, so use global index
-                        }
-                        else // It is the process that is aligned with left physical boundary
-                        {
+                            connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index - i_global_jump);}
+                        else {
                             connected_voxel_indices[n].push_back(n + i_jump);
-                            //connect_voxels_indices_only(n, n + i_jump, dS_yz);        // Guranteed that adjacent local index will be present
-                            connected_voxel_global_indices[n].push_back(voxels[n + i_jump].global_mesh_index);
-                            //connect_voxels_global_indices_only(n, n + i_jump, dS_yz); // Guranteed that global adjacent index will be present
-                                                                                    // No left local OR global voxel is present
-                        }
+                            connected_voxel_global_indices[n].push_back(voxels[n + i_jump].global_mesh_index);}
                     }
                     //Right boundary of each process
                     if (i == x_size -1){
-                        if (voxels[n].center[0] + dx / 2 < x_end)            // i.e. it is not a process aligned with right physical boundary
-                        {
-                            //connected_voxel_indices[n].push_back(-1);                                                 // There is no local right neighbour
-                            connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index + i_global_jump); // But there is a neighbour on next process, so use global index
-                        }
-                        else // It is the process that is aligned with right physical boundary
-                        {
-                            // There is no right local or neighbour across this process. Do nothing.
-                        }
+                        if (voxels[n].center[0] + dx / 2 < x_end){ // i.e. it is not a process aligned with right physical boundary
+                            connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index + i_global_jump);} // But there is a neighbour on next process, so use global index
                     }
                     //Y-aligned parts
                     if ( j > 0 and j < y_size - 1){
                         connected_voxel_indices[n].push_back(n + j_jump);
                         connected_voxel_indices[n].push_back(n - j_jump);
-                        //connect_voxels_indices_only(n, n + j_jump, dS_xz);
                         connected_voxel_global_indices[n].push_back(voxels[n + j_jump].global_mesh_index);
                         connected_voxel_global_indices[n].push_back(voxels[n - j_jump].global_mesh_index);
-                        //connect_voxels_global_indices_only(n, n + j_jump, dS_xz);
                     }
                     if (j == 0 ){
                         if (voxels[n].center[1] - dy / 2 > y_start) // i.e. it is not a process aligned with bottom physical boundary
                         {
-                            // First connect this to right neighbour then right neighbour to this.
                             connected_voxel_indices[n].push_back(n + j_jump);
-                            //connect_voxels_indices_only(n, n + j_jump, dS_xz);        // Guranteed that adjacent local index will be present
                             connected_voxel_global_indices[n].push_back(voxels[n + j_jump].global_mesh_index);
-                            //connect_voxels_global_indices_only(n, n + j_jump, dS_xz); // Guranteed that global adjacent index will be present
-
-                            //connected_voxel_indices[n].push_back(-1);                                                 // There is no local left neighbour
                             connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index - j_global_jump); // But there is a neighbour on previous process, so use global index
                         }
                         else // It is the process that is aligned with left physical boundary
                         {
                             connected_voxel_indices[n].push_back(n + j_jump);
                             connected_voxel_global_indices[n].push_back(voxels[n + j_jump].global_mesh_index);
-                            //connect_voxels_indices_only(n, n + j_jump, dS_xz);        // Guranteed that adjacent local index will be present
-                            //connect_voxels_global_indices_only(n, n + j_jump, dS_xz); // Guranteed that global adjacent index will be present
-                                                                                    // No downward local OR global voxel is present
                         }
                     }
                     if (j == y_size -1) {
                          if (voxels[n].center[1] + dy / 2 < y_end)            // i.e. it is not a process aligned with right physical boundary
                         {
-                            //connected_voxel_indices[n].push_back(-1);                                                 // There is no local right neighbour
                             connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index + j_global_jump); // But there is a neighbour on next process, so use global index
-                        }
-                        else // It is the process that is aligned with right physical boundary
-                        {
-                            // There is no right local or neighbour across this process. Do nothing.
                         }
                     }
                     //Z-aligned
                     if ( k > 0 and k < z_size - 1){
                         connected_voxel_indices[n].push_back(n + k_jump);
                         connected_voxel_indices[n].push_back(n - k_jump);
-                        //connect_voxels_indices_only(n, n + k_jump, dS_xy);
                         connected_voxel_global_indices[n].push_back(voxels[n + k_jump].global_mesh_index);
                         connected_voxel_global_indices[n].push_back(voxels[n - k_jump].global_mesh_index);
-                        //connect_voxels_global_indices_only(n, n + k_jump, dS_xy);
                     }
                     if (k == 0) {
                         if (voxels[n].center[2] - dz / 2 > z_start) // i.e. it is not a process aligned with bottom physical boundary
                         {
-                            // First connect this to right neighbour then right neighbour to this.
                             connected_voxel_indices[n].push_back(n + k_jump);
-                            //connect_voxels_indices_only(n, n + k_jump, dS_xy);        // Guranteed that adjacent local index will be present
                             connected_voxel_global_indices[n].push_back(voxels[n + k_jump].global_mesh_index);
-                            //connect_voxels_global_indices_only(n, n + k_jump, dS_xy); // Guranteed that global adjacent index will be present
-
-                            //connected_voxel_indices[n].push_back(-1);                                                 // There is no local left neighbour
                             connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index - k_global_jump); // But there is a neighbour on previous process, so use global index
                         }
                         else // It is the process that is aligned with left physical boundary
                         {
                             connected_voxel_indices[n].push_back(n + k_jump);
-                            //connect_voxels_indices_only(n, n + k_jump, dS_xy);        // Guranteed that adjacent local index will be present
                             connected_voxel_global_indices[n].push_back(voxels[n + k_jump].global_mesh_index);
-                            //connect_voxels_global_indices_only(n, n + k_jump, dS_xy); // Guranteed that global adjacent index will be present
-                                                                                    // No downward local OR global voxel is present
                         }
                     }
                     if (k == z_size -1){
                         if (voxels[n].center[2] + dz / 2 < z_end)            // i.e. it is not a process aligned with right physical boundary
                         {
-                            //connected_voxel_indices[n].push_back(-1);                                                 // There is no local right neighbour
                             connected_voxel_global_indices[n].push_back(voxels[n].global_mesh_index + k_global_jump); // But there is a neighbour on next process, so use global index
-                        }
-                        else // It is the process that is aligned with right physical boundary
-                        {
-                            // There is no right local or neighbour across this process. Do nothing.
                         }
                     }
                 }
             }
         }
-        
-        //end_time = std::chrono::high_resolution_clock::now();
-        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        //std::cout << "  Time taken 1.6: " << duration_ms << "ms" << std::endl;
-
         /*--------------------------------------------------------------------------------------------------------------------------- */
         /* In the example that I am following, use_voxel_faces is false, hence no need to parallelize this yet.                       */
         /* This is very similar to finding neighbours of voxels but most importantly, the connected_voxels_indices[] vector           */
         /* is again initialized over here.                                                                                            */
         /*--------------------------------------------------------------------------------------------------------------------------- */
-        //start_time = std::chrono::high_resolution_clock::now();
-        //if (tid == 1) {
         if (use_voxel_faces)
         {
             create_voxel_faces();
         }
-        //}
-        //end_time = std::chrono::high_resolution_clock::now();
-        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        //std::cout << "  Time taken 1.7: " << duration_ms << "ms" << std::endl;
         /*--------------------------------------------------------------------------------------------------------------------------- */
-        /* Moore neighbourhood is possibly not used anywhere, hence leave parallelization for later
+        /* Moore neighbourhood is used only in Physicell std update velocity, disable if not needed
         /*--------------------------------------------------------------------------------------------------------------------------- */
-        //start_time = std::chrono::high_resolution_clock::now();
         create_moore_neighborhood();
-        
-        
-        //end_time = std::chrono::high_resolution_clock::now();
-        //duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        //std::cout << "  Time taken 1.6: " << duration_ms << "ms" << std::endl;
         return;
     }
 
@@ -468,9 +359,6 @@ namespace BioFVM
 
     void General_Mesh::connect_voxels_global_indices_only(int i, int j, double SA) // done
     {
-
-        // Create an adjacency list of global indexes
-
         connected_voxel_global_indices[i].push_back(voxels[j].global_mesh_index);
         connected_voxel_global_indices[j].push_back(voxels[i].global_mesh_index);
 
@@ -519,7 +407,6 @@ namespace BioFVM
         {
             k = 0;
         }
-
         return (i * global_num_y_voxels * global_num_z_voxels + j * global_num_z_voxels + k);
     }
 
@@ -737,9 +624,6 @@ namespace BioFVM
         long int number_of_data_entries = mesh.voxels.size();
         
         int size_of_each_datum = 3 + 1 + number_of_densities(); 
-
-        // Possibly we do not need to return anything over here, we can write a separate file at Master
-        // All processes call this function - because William Groppe says MPI_File_open is collective operation
 
         write_matlab_header(size_of_each_datum, number_of_data_entries, filename, "multiscale_microenvironment", rank, size, mpi_Cart_comm);
 
@@ -989,7 +873,6 @@ namespace BioFVM
 
                 MPI_Barrier(mpi_Cart_comm);
             }
-            cout << "Diffusion set up is done" << endl;
 
             /*--------------------------------------------------------------------*/
             /* In 1-D X decomposition, z and y-lines are contiguous adn typically */
@@ -1031,11 +914,7 @@ namespace BioFVM
             }
 
             M.diffusion_solver_setup_done = true;
-            // t_end_set = MPI_Wtime();
-            // std::cout<<"Set-up time = "<<(t_end_set-t_strt_set)<<std::endl;
-
-            
-            if (rank == 0) file << "X-diffusion,Y-diffusion,Z-diffusion,Apply Dirichlet" << std::endl;
+            //if (rank == 0) file << "X-diffusion,Y-diffusion,Z-diffusion,Apply Dirichlet" << std::endl;
         }
 
         int n_req = granurality;
@@ -1044,13 +923,8 @@ namespace BioFVM
         MPI_Request recv_req[n_req];
         std::vector<double> block3d(M.thomas_i_jump); //The message to send is of the size Y_voxels * Z_voxels * Substrates
 
-        auto start_time = std::chrono::high_resolution_clock::now();
         M.apply_dirichlet_conditions(rank, size);
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto apply_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-       
 
-        // cout << "Rank " << rank << " apply dirichlet condition done" << endl;
         /*-----------------------------------------------------------------------------------*/
         /*                        FORWARD ELIMINATION - x DIRECTION/DECOMPOSITION            */
         /*-----------------------------------------------------------------------------------*/
@@ -1060,14 +934,7 @@ namespace BioFVM
         /* Remember to visualize 3-D as 2-D plates kept after one another. Hence Z-direction data is farther   */
         /* apart than X/Y direction                                                                            */
         // cout << "Rank " << rank << " snd_data_size: " << snd_data_size << " rcv_data_size: " << rcv_data_size << endl;
-
         /* So row is along Z axis, column of each row is along Y-axis and each element has p_density_vector*/
-
-        
-
-        // t_strt_x = MPI_Wtime();
-        // cout << "Rank " << rank << " starting forward" << endl;
-        start_time = std::chrono::high_resolution_clock::now();
         
         if (rank == 0)
         {
@@ -1078,7 +945,7 @@ namespace BioFVM
                 for (int index = initial_index; index < initial_index + M.snd_data_size; index += M.mesh.n_substrates)
                 {
                     int index_dec = index; 
-                    for (int d = 0; d < M.thomas_denomx[0].size(); d++)
+                    for (int d = 0; d < M.thomas_k_jump; d++)
                     {
                         (*M.p_density_vectors)[index + d] /= M.thomas_denomx[0][d];
                     }
@@ -1113,10 +980,10 @@ namespace BioFVM
             if (M.last_iteration) {
                 int initial_index = granurality * M.snd_data_size;
                 #pragma omp parallel for
-                for (int index = initial_index; index < initial_index + M.snd_data_size_last; index += M.mesh.n_substrates)
+                for (int index = initial_index; index < initial_index + M.snd_data_size_last; index += M.thomas_k_jump)
                 {
                     int index_dec = index; 
-                    for (int d = 0; d < M.mesh.n_substrates; d++)
+                    for (int d = 0; d < M.thomas_k_jump; d++)
                     {
                         (*M.p_density_vectors)[index + d] /= M.thomas_denomx[0][d];
                     }
@@ -1129,9 +996,8 @@ namespace BioFVM
                         {
                             (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index_dec + d];
                         }
-
                         //(*(*M.p_density_vectors))[n] /= M.thomas_denomx[i];
-                        for (int d = 0; d < M.mesh.n_substrates; d++)
+                        for (int d = 0; d < M.thomas_k_jump; d++)
                         {
                             (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomx[i][d];
                         }
@@ -1164,7 +1030,7 @@ namespace BioFVM
                     int initial_index = step * M.snd_data_size;
                     MPI_Wait(&recv_req[step], MPI_STATUS_IGNORE);
                     #pragma omp parallel for
-                    for (int index = initial_index; index < initial_index + M.snd_data_size; index += M.mesh.n_substrates)
+                    for (int index = initial_index; index < initial_index + M.thomas_k_jump; index += M.thomas_k_jump)
                     {
                         // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, block3d[k][j]);
                         int index_dec = index;
@@ -1172,16 +1038,13 @@ namespace BioFVM
                         {
                             (*M.p_density_vectors)[index + d] += M.thomas_constant1[d] * block3d[index + d];
                         }
-
                         //(*(*M.p_density_vectors))[n] /= M.thomas_denomx[0];
                         for (int d = 0; d < M.mesh.n_substrates; d++)
                         {
                             (*M.p_density_vectors)[index + d] /= M.thomas_denomx[0][d];
                         }
-
                         for (int i = 1; i < M.mesh.x_size; i++)
                         {
-
                             int index_inc = index_dec + M.thomas_i_jump;
                             // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, (*(*M.p_density_vectors))[n - M.thomas_i_jump]);
                             for (int d = 0; d < M.thomas_k_jump; d++)
@@ -1189,27 +1052,25 @@ namespace BioFVM
                                 (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index_dec + d];
                             }
                             //(*(*M.p_density_vectors))[n] /= M.thomas_denomx[i];
-                            for (int d = 0; d < M.mesh.n_substrates; d++)
+                            for (int d = 0; d < M.thomas_k_jump; d++)
                             {
                                 (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomx[i][d];
                             }
-
                             index_dec = index_inc;
                         }
-                        
                     }
                     if (rank < (size - 1))
                     {
                         int x_end = M.mesh.x_size - 1;
-                        MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + initial_index]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, mpi_Cart_comm, &send_req[step]);
+                        MPI_Isend(&((*M.p_density_vectors)[(x_end * M.thomas_i_jump) + initial_index]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, mpi_Cart_comm, &send_req[step]);
                     }
                 }
                 if (M.last_iteration)
                 {
                     int initial_index = granurality * M.snd_data_size;
-                    MPI_Wait(&recv_req[granurality], MPI_STATUS_IGNORE); //Need to change
+                    MPI_Wait(&recv_req[granurality], MPI_STATUS_IGNORE); 
                     #pragma omp parallel for
-                    for (int index = initial_index; index < initial_index + M.snd_data_size_last; index += M.mesh.n_substrates)
+                    for (int index = initial_index; index < initial_index + M.snd_data_size_last; index += M.thomas_k_jump)
                     {
                         // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, block3d[k][j]);
                         int index_dec = index;
@@ -1217,16 +1078,14 @@ namespace BioFVM
                         {
                             (*M.p_density_vectors)[index + d] += M.thomas_constant1[d] * block3d[index + d];
                         }
-
                         //(*(*M.p_density_vectors))[n] /= M.thomas_denomx[0];
-                        for (int d = 0; d < M.mesh.n_substrates; d++)
+                        for (int d = 0; d < M.thomas_k_jump; d++)
                         {
                             (*M.p_density_vectors)[index + d] /= M.thomas_denomx[0][d];
                         }
 
                         for (int i = 1; i < M.mesh.x_size; i++)
                         {
-
                             int index_inc = index_dec + M.thomas_i_jump;
                             // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, (*(*M.p_density_vectors))[n - M.thomas_i_jump]);
                             for (int d = 0; d < M.thomas_k_jump; d++)
@@ -1234,7 +1093,7 @@ namespace BioFVM
                                 (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index_dec + d];
                             }
                             //(*(*M.p_density_vectors))[n] /= M.thomas_denomx[i];
-                            for (int d = 0; d < M.mesh.n_substrates; d++)
+                            for (int d = 0; d < M.thomas_k_jump; d++)
                             {
                                 (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomx[i][d];
                             }
@@ -1254,13 +1113,9 @@ namespace BioFVM
                 }
             }
         }
-        
         /*-----------------------------------------------------------------------------------*/
         /*                         CODE FOR BACK SUBSITUTION                                 */
         /*-----------------------------------------------------------------------------------*/
-        
-        //cout << "Rank " << rank << " starting backward substitution" << endl;
-
         if (rank == (size - 1))
         {
             for (int step = 0; step < granurality; ++step)
@@ -1310,20 +1165,16 @@ namespace BioFVM
                 if (size > 1) {
                     MPI_Request aux;
                     MPI_Isend(&((*M.p_density_vectors)[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, mpi_Cart_comm, &send_req[granurality]);
-                    //cout << "Rank " << rank << " has send" << endl;
                 }
             
             }
         }
         else
         {
-            for (int step = 0; step < granurality; ++step)
-            {
-                MPI_Irecv(&(block3d[step*M.snd_data_size]), M.rcv_data_size, MPI_DOUBLE, rank+1, step, mpi_Cart_comm, &recv_req[step]);
-            }
+            for (int step = 0; step < granurality; ++step) {
+                MPI_Irecv(&(block3d[step*M.snd_data_size]), M.rcv_data_size, MPI_DOUBLE, rank+1, step, mpi_Cart_comm, &recv_req[step]);}
             if (M.last_iteration)
                 MPI_Irecv(&(block3d[granurality*M.snd_data_size]), M.rcv_data_size_last, MPI_DOUBLE, rank+1, granurality, mpi_Cart_comm, &recv_req[granurality]);
-
             
             for (int step = 0; step < granurality; ++step)
             {
@@ -1357,29 +1208,25 @@ namespace BioFVM
                 {
                     MPI_Request aux;
                     MPI_Isend(&((*M.p_density_vectors)[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, mpi_Cart_comm, &send_req[step]);
-                    // cout << "Rank " << rank << " has send" << endl;
                 }
             }
             if (M.last_iteration)
             {
-                int initial_index = ((M.mesh.x_coordinates.size() - 1)*M.thomas_i_jump) + (granurality * M.snd_data_size);
+                int initial_index = ((M.mesh.x_size - 1)*M.thomas_i_jump) + (granurality * M.snd_data_size);
                 int index_3d_initial = (granurality * M.snd_data_size);
                 MPI_Wait(&recv_req[granurality], MPI_STATUS_IGNORE);
                 #pragma omp parallel for
                 for (int offset = 0; offset < M.snd_data_size_last; offset += M.mesh.n_substrates)
                 {
                     int index_aux = initial_index + offset;
-                    //int index = j * M.thomas_j_jump + k * M.thomas_k_jump + (M.mesh.x_coordinates.size() - 1) * M.thomas_i_jump;
                     int index_3d = index_3d_initial + offset;
-                    // naxpy(&(*(*M.p_density_vectors))[n], M.thomas_cx[M.mesh.x_coordinates.size() - 1], block3d[k][j]);
+                    //naxpy(&(*(*M.p_density_vectors))[n], M.thomas_cx[M.mesh.x_coordinates.size() - 1], block3d[k][j]);
                     for (int d = 0; d < M.thomas_k_jump; d++)
                     {
                         (*M.p_density_vectors)[index_aux + d] -= M.thomas_cx[M.mesh.x_size - 1][d] * block3d[index_3d + d];
                     }
-
                     for (int i = M.mesh.x_size - 2; i >= 0; i--)
                     {
-
                         int index_dec = index_aux - M.thomas_i_jump;
                         // naxpy(&(*(*M.p_density_vectors))[n], M.thomas_cx[i], (*(*M.p_density_vectors))[n + M.thomas_i_jump]);
                         for (int d = 0; d < M.thomas_k_jump; d++)
@@ -1387,7 +1234,6 @@ namespace BioFVM
                             (*M.p_density_vectors)[index_dec + d] -= M.thomas_cx[i][d] * (*M.p_density_vectors)[index_aux + d];
                         }
                         index_aux = index_dec;
-                        
                     }
                 }
                 if (rank > 0)
@@ -1398,29 +1244,28 @@ namespace BioFVM
             }
         }
         MPI_Barrier(mpi_Cart_comm);
-
+        /*
         end_time = std::chrono::high_resolution_clock::now();
         auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
         if (rank == 0)
-            //std::cout << "   X diffusion: " << duration_ms << "ms" << std::endl;
             file << duration_us << ",";
-
+        */
        
-        start_time = std::chrono::high_resolution_clock::now();
+        //start_time = std::chrono::high_resolution_clock::now();
         M.apply_dirichlet_conditions(rank, size);
-        end_time = std::chrono::high_resolution_clock::now();
-        apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+        //end_time = std::chrono::high_resolution_clock::now();
+        //apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
 
-        start_time = std::chrono::high_resolution_clock::now();
-        #pragma omp parallel for
-        for (int i = 0; i < M.mesh.x_coordinates.size(); i++)
+        //start_time = std::chrono::high_resolution_clock::now();
+        #pragma omp parallel for collapse(2)
+        for (int i = 0; i < M.mesh.x_size; i++)
         {
-            for (int k = 0; k < M.mesh.z_coordinates.size(); k++)
+            for (int k = 0; k < M.mesh.z_size; k++)
             {
 
                 int index = i * M.thomas_i_jump + k * M.thomas_k_jump;
                 //(*(*M.p_density_vectors))[n] /= M.thomas_denomy[0];
-                for (int d = 0; d < M.mesh.n_substrates; d++)
+                for (int d = 0; d < M.thomas_k_jump; d++)
                 {
                     (*M.p_density_vectors)[index + d] /= M.thomas_denomy[0][d];
                 }
@@ -1435,7 +1280,7 @@ namespace BioFVM
                         (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index + d];
                     }
                     //(*(*M.p_density_vectors))[n] /= M.thomas_denomy[j];
-                    for (int d = 0; d < M.mesh.n_substrates; d++)
+                    for (int d = 0; d < M.thomas_k_jump; d++)
                     {
                         (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomy[j][d];
                     }
@@ -1458,22 +1303,21 @@ namespace BioFVM
                 }
             }
         }
+        /*
         end_time = std::chrono::high_resolution_clock::now();
         duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
         if (rank == 0)
             //std::cout << "   Y diffussion: " << duration_ms << "ms" << std::endl;
-            file << duration_us << ",";
+            file << duration_us << ",";*/
          
-        start_time = std::chrono::high_resolution_clock::now();
+        //start_time = std::chrono::high_resolution_clock::now();
         M.apply_dirichlet_conditions(rank, size);
-        end_time = std::chrono::high_resolution_clock::now();
-        apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-        if (rank == 0)
+        //end_time = std::chrono::high_resolution_clock::now();
+        //apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+        //if (rank == 0)
         //std::cout << "   Apply dirichlet: " << duration_ms << "ms" << std::endl;
-
-        // cout << "Rank " << rank << " Z diffusion" << endl;
         
-        start_time = std::chrono::high_resolution_clock::now();
+        //start_time = std::chrono::high_resolution_clock::now();
         #pragma omp parallel for collapse(2)
         for (int i = 0; i < M.mesh.x_size; i++)
         {
@@ -1482,7 +1326,7 @@ namespace BioFVM
 
                 int index = i * M.thomas_i_jump + j * M.thomas_j_jump;
                 //(*(*M.p_density_vectors))[n] /= M.thomas_denomz[0];
-                for (int d = 0; d < M.mesh.n_substrates; d++)
+                for (int d = 0; d < M.thomas_j_jump; d++)
                 {
                     (*M.p_density_vectors)[index + d] /= M.thomas_denomz[0][d];
                 }
@@ -1490,7 +1334,6 @@ namespace BioFVM
                 // should be an empty loop if mesh.z_coordinates.size() < 2
                 for (int k = 1; k < M.mesh.z_size; k++)
                 {
-
                     int index_inc = index + M.thomas_k_jump;
                     // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, (*(*M.p_density_vectors))[n - M.thomas_k_jump]);
                     for (int d = 0; d < M.thomas_k_jump; d++)
@@ -1498,21 +1341,18 @@ namespace BioFVM
                         (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index + d];
                     }
                     //(*(*M.p_density_vectors))[n] /= M.thomas_denomz[k];
-                    for (int d = 0; d < M.mesh.n_substrates; d++)
+                    for (int d = 0; d < M.thomas_k_jump; d++)
                     {
                         (*M.p_density_vectors)[index_inc + d] /= M.thomas_denomz[k][d];
                     }
 
                     index = index_inc;
                 }
-
                 // for parallelization need to break forward elimination and back substitution into
                 // should be an empty loop if mesh.z_coordinates.size() < 2
-
                 index = i * M.thomas_i_jump + j * M.thomas_j_jump + (M.thomas_k_jump * (M.mesh.z_size - 1));
                 for (int k = M.mesh.z_coordinates.size() - 2; k >= 0; k--)
                 {
-
                     int index_dec = index - M.thomas_k_jump;
                     // naxpy(&(*(*M.p_density_vectors))[n], M.thomas_cz[k], (*(*M.p_density_vectors))[n + M.thomas_k_jump]);
                     for (int d = 0; d < M.thomas_k_jump; d++)
@@ -1523,22 +1363,22 @@ namespace BioFVM
                 }
             }
         }
-        end_time = std::chrono::high_resolution_clock::now();
-        duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-        if (rank == 0)
+        //end_time = std::chrono::high_resolution_clock::now();
+        //duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+        //if (rank == 0)
             //std::cout << "   Z diffussion: " << duration_ms << "ms" << std::endl;
-            file << duration_us << ",";
+        //    file << duration_us << ",";
 
         // t_end_z = MPI_Wtime();
         // std::cout<<"Z solve time = "<<(t_end_z-t_strt_z)<<std::endl;
         // cout << "Rank " << rank << " apply dirichlet" << endl;
-        start_time = std::chrono::high_resolution_clock::now();
+        //start_time = std::chrono::high_resolution_clock::now();
         M.apply_dirichlet_conditions(rank, size);
-        end_time = std::chrono::high_resolution_clock::now();
-        apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-        if (rank == 0)
+        //end_time = std::chrono::high_resolution_clock::now();
+        //apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+        //if (rank == 0)
             //std::cout << "   Apply dirichlet: " << duration_ms << "ms" << std::endl;
-            file << apply_us/4.0 << std::endl;
+        //    file << apply_us/4.0 << std::endl;
         // reset gradient vectors
         //	M.reset_all_gradient_vectors();
         // cout << "Rank " << rank << " have finished the diffusion" << endl;
@@ -1560,13 +1400,9 @@ namespace BioFVM
         return (a * b) / gcd(a, b);
     }
 
-    void diffusion_decay_solver__constant_coefficients_LOD_3D_vectorized(Microenvironment &M, double dt, int size, int rank, int *coords, int *dims, MPI_Comm mpi_Cart_comm){
+    void diffusion_decay_solver__constant_coefficients_LOD_3D_AVX256D(Microenvironment &M, double dt, int size, int rank, int *coords, int *dims, MPI_Comm mpi_Cart_comm){
         uint granurality = M.granurality;
         MPI_Request send_req[granurality], recv_req[granurality];
-        
-        /*
-        string path  = "./timing/voxels_" + std::to_string((int)cube_side/2.0) + "/substrates_" + std::to_string(M.mesh.n_substrates) 
-        + "/factor_" + std::to_string(factor) +  "/" + std::to_string(mpi_size) + "_node.csv";*/
         //std::ofstream file(M.timing_csv, std::ios::app);
         int vl = 4;
 
@@ -1844,10 +1680,10 @@ namespace BioFVM
     
         double block3d[M.thomas_i_jump]; //Aux structure of the size: Y*Z*Substrates
 
-        auto start_time = std::chrono::high_resolution_clock::now();
+        //auto start_time = std::chrono::high_resolution_clock::now();
         M.apply_dirichlet_conditions_v2(rank, size);
-        auto end_time = std::chrono::high_resolution_clock::now();
-        auto apply_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+        //auto end_time = std::chrono::high_resolution_clock::now();
+        //auto apply_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
         //cout << "Peto aqui!" << endl;
         start_time = std::chrono::high_resolution_clock::now();
         //X-diffusion vector_x_v2
@@ -1875,7 +1711,7 @@ namespace BioFVM
                     {
                         int index_inc = index_dec + M.thomas_i_jump;
                         __m256d constant1 = _mm256_loadu_pd(&M.gthomas_constant1[gd]);
-                        __m256d density_curr1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_dec ]);
+                        __m256d density_curr1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_dec]);
                         __m256d density_inc1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_inc]);
                         __m256d denomy1 = _mm256_loadu_pd(&M.gthomas_denomx[i][gd]);
                     
@@ -1888,10 +1724,7 @@ namespace BioFVM
                     }
                 }
 
-                
                 //Epilogo vectorization
-                //int ep =limit - limit_vec;
-                //int ep_it = ep / number_of_M.p_density_vectors + (ep > 0);
                 for (int index = limit_vec; index < limit; ++index)
                 {
                     int index_dec = index;
@@ -2014,8 +1847,7 @@ namespace BioFVM
                             //_mm256_storeu_pd(&microenvironment[index_inc + zd], density_curr);
                 
                             //(*(*M.p_density_vectors))[n] /= M.thomas_denomy[j];
-                            //Fer unrolling aqui
-                   
+
                             //__m256d density = _mm256_loadu_pd(&microenvironment[index_inc + zd]);
                             density_curr1 = _mm256_div_pd(density_curr1, denomy1);
                             _mm256_storeu_pd(&(*M.p_density_vectors)[index_inc], density_curr1);
@@ -2025,12 +1857,6 @@ namespace BioFVM
                         
                     }
                     //Epilogo vectorizacion
-                    /*
-                    int ep = snd_data_size - limit;
-                    int index = limit;
-                    int d_ini = (ep%number_of_densities);
-                    int ep_it = ep / number_of_densities + (ep > 0);
-                    */
                     for (int index = limit_vec; index < limit; ++index)
                     {
                         int index_dec = index;
@@ -2113,8 +1939,6 @@ namespace BioFVM
         /*-----------------------------------------------------------------------------------*/
         /*                         CODE FOR BACK SUBSITUTION                                 */
         /*-----------------------------------------------------------------------------------*/
-        
-        //cout << "Rank " << rank << " starting backward substitution" << endl;
 
         if (rank == (size - 1))
         {
@@ -2131,7 +1955,6 @@ namespace BioFVM
                     int gd = (index - last_xplane)%M.gvec_size;
                     for (int i = M.mesh.x_size - 2; i >= 0; i--)
                     {
-
                         int index_dec = index_aux - M.thomas_i_jump;
                         __m256d cy1 = _mm256_loadu_pd(&M.gthomas_cx[i][gd]);
                         __m256d density_curr1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_aux]);
@@ -2187,7 +2010,6 @@ namespace BioFVM
                 if (size > 1) {
                     MPI_Request aux;
                     MPI_Isend(&((*M.p_density_vectors)[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, MPI_COMM_WORLD, &send_req[granurality]);
-                    //cout << "Rank " << rank << " has send" << endl;
                 }
             
             }
@@ -2301,18 +2123,18 @@ namespace BioFVM
                 }
             }
         }
-    end_time = std::chrono::high_resolution_clock::now();
-    auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+    //end_time = std::chrono::high_resolution_clock::now();
+    //auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
     //cout << "Peto aqui2!" << endl;
 
     //if (rank == 0)
         //file << duration_us << ",";
-    start_time = std::chrono::high_resolution_clock::now();
+    //start_time = std::chrono::high_resolution_clock::now();
     M.apply_dirichlet_conditions(rank, size);
-    end_time = std::chrono::high_resolution_clock::now();
-    apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+    //end_time = std::chrono::high_resolution_clock::now();
+    //apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
     //Y-diffusion
-    start_time = std::chrono::high_resolution_clock::now();
+    //start_time = std::chrono::high_resolution_clock::now();
     #pragma omp parallel for
     for (int i = 0; i < M.mesh.x_size; i++)
     {
@@ -2418,17 +2240,17 @@ namespace BioFVM
 
         }
     }
-    end_time = std::chrono::high_resolution_clock::now();
-    duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+    //end_time = std::chrono::high_resolution_clock::now();
+    //duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
     //if (rank == 0)
         //file << duration_us << ",";
     M.apply_dirichlet_conditions_v2(rank, size);
-    end_time = std::chrono::high_resolution_clock::now();
-    apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+    //end_time = std::chrono::high_resolution_clock::now();
+    //apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
     //Z-diffusion
     //cout << "Peto aqui 3!" << endl;
 
-    start_time = std::chrono::high_resolution_clock::now();
+    //start_time = std::chrono::high_resolution_clock::now();
     #pragma omp parallel for collapse(2)
     for (int i = 0; i < M.mesh.x_size; i++)
         {
@@ -2474,15 +2296,15 @@ namespace BioFVM
             }
         }
     }
-    end_time = std::chrono::high_resolution_clock::now();
-    duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-    if (rank == 0)
+    //end_time = std::chrono::high_resolution_clock::now();
+    //duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+    //if (rank == 0)
         //file << duration_us << ",";
     
-    start_time = std::chrono::high_resolution_clock::now();
+    //start_time = std::chrono::high_resolution_clock::now();
     M.apply_dirichlet_conditions_v2(rank, size);
-    end_time = std::chrono::high_resolution_clock::now();
-    apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+    //end_time = std::chrono::high_resolution_clock::now();
+    //apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
      //if (rank == 0)
         //file << apply_us/4.0 << std::endl;
     }   

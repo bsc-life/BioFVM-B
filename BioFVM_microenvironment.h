@@ -125,19 +125,16 @@ namespace BioFVM
         vector<double> gthomas_constant1, gthomas_constant1a, gthomas_constant2, gthomas_constant3, gthomas_constant3a;
         vector<vector<double>> gthomas_denomx,gthomas_denomy, gthomas_denomz;
         vector<vector<double>> gthomas_cx, gthomas_cy, gthomas_cz;
-        //Dirichlet conditions
         int gvec_size;
-
+		//Dirichlet conditions
 		std::vector<int> dirichlet_indices;
-		//std::vector< std::vector<double> > dirichlet_value_vectors;
-		//std::vector<bool> dirichlet_node_map;
 		std::vector<double> dirichlet_value_vectors;
 		std::vector<bool> dirichlet_activation_vector;
 
 	public:
 		std::vector<double> *p_density_vectors; // Jose
-		std::string timing_csv;
-		uint granurality;
+		std::string timing_csv; // BioFVM-B: path to profiling csv file
+		uint granurality; // BioFVM-B: blocking for Diffusion-decay 3D solver 
 
 		/*! The mesh for the diffusing quantities */
 		Cartesian_Mesh mesh;

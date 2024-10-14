@@ -515,7 +515,7 @@ void set_save_biofvm_cell_data_as_custom_matlab( bool newvalue )
 
 /* writing parts of BioFVM to a MultiCellDS file */ 
 
-//jose: VOY POR AQUI
+
 void add_BioFVM_substrates_to_open_xml_pugi( pugi::xml_document& xml_dom , std::string filename_base, Microenvironment& M )
 {
 	std::cout << "add BioFVM substrates to open xml pugi desactivated" << std::endl;
@@ -1054,8 +1054,7 @@ void read_microenvironment_from_MultiCellDS_xml( Microenvironment& M_destination
 void read_microenvironment_from_MultiCellDS_xml( Microenvironment& M_destination , pugi::xml_document& xml_dom )
 {
 	// find the first microenvironment 
-	std::cout << "read_microenvironment_from_MultiCellDS_xml desactivated" << std::endl;
-	/*
+
 	using namespace pugi;
 	xml_node root = xml_dom.child("MultiCellDS");
 	root = root.child( "microenvironment");
@@ -1344,7 +1343,7 @@ void read_microenvironment_from_MultiCellDS_xml( Microenvironment& M_destination
 	}		
 
 	std::cout << "done!" << std::endl; 
-	return; */
+	return; 
 } 
 
 };
