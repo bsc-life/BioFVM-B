@@ -1,0 +1,31 @@
+Readme
+
+Examples with mpi:
+    * 3D_tumor_example_X.cpp
+    * cap_voxels.cpp
+    * create_point_sources_sinks.cpp
+    * diffusion_correctness.cpp
+    * dirichlet_test.cpp
+    * perf_voxels_substrates.cpp
+    * perf_voxels.cpp
+    * performance_test_substrates.cpp
+    * performance_test_voxels.cpp
+    * solver_test.cpp
+    * test_VS.cpp
+    * tutorial1_bioFVM.cpp
+    *
+
+
+Examples without mpi:
+    * convergence_test1_analytical.cpp
+    * convergence_test1.cpp
+    * convergence_test2.cpp
+    * convergence_test3.cpp
+    * convergence_test4_1.cpp
+    * convergence_test4_2.cpp
+    * convergence_test5.cpp
+    * main_experiment.cpp
+    * MultiCellDS_test.cpp
+    * performance_test_numcells.cpp
+    * tutorial2_BioFVM.cpp
+    * tutorial3_BioFVM.cpp

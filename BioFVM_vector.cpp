@@ -464,6 +464,29 @@ namespace BioFVM
 		return;
 	}
 
+	//BioFVM-B vector
+	void csv_to_vector(const char *buffer, double *vect)
+	{
+		int i = 0;
+		int index = 0;
+		while (i < strlen(buffer))
+		{
+			// churn through delimiters, whitespace, etc. to reach the next numeric term
+			while (isdigit(buffer[i]) == false && buffer[i] != '.' && buffer[i] != '-' && buffer[i] != 'e' && buffer[i] != 'E')
+			{
+				i++;
+			}
+			char *pEnd;
+			if (i < strlen(buffer)) // add this extra check in case of a final character, e.g., ']'
+			{
+				vect[index] = (strtod(buffer + i, &pEnd));
+				++index;
+				i = pEnd - buffer;
+			}
+		}
+		return;
+	}
+
 	char *vector_to_csv(const std::vector<double> &vect)
 	{
 		static int datum_size = 16; // format = %.7e, 1 (sign) + 1 (lead) + 1 (decimal) + 7 (figs) + 2 (e, sign) + 3 (exponent) + 1 (delimiter) = 16

@@ -31,8 +31,8 @@ namespace BioFVM
         mesh.resize(x_start, x_end, y_start, y_end, z_start, z_end, dx_new, dy_new, dz_new, dims, coords);
 
         //BioFVM-B  requires larger range than integer structure: Risk of overflow
-        long uint box_elements = mesh.x_size * mesh.y_size; 
-        box_elements *= * mesh.z_size;
+        long int box_elements = mesh.x_size * mesh.y_size; 
+        box_elements *=  mesh.z_size;
         box_elements *= number_of_densities();
         
         temporary_density_vectors1.assign(box_elements, 0.0);
@@ -918,7 +918,7 @@ namespace BioFVM
         }
 
         int n_req = granurality;
-        if (M.last_iteration > 0) n_req+=1;
+        if (M.snd_data_size_last > 0) n_req+=1;
         MPI_Request send_req[n_req];
         MPI_Request recv_req[n_req];
         std::vector<double> block3d(M.thomas_i_jump); //The message to send is of the size Y_voxels * Z_voxels * Substrates
@@ -977,7 +977,7 @@ namespace BioFVM
                 }
             }
             //Last iteration
-            if (M.last_iteration) {
+            if (M.snd_data_size_last != 0) {
                 int initial_index = granurality * M.snd_data_size;
                 #pragma omp parallel for
                 for (int index = initial_index; index < initial_index + M.snd_data_size_last; index += M.thomas_k_jump)
@@ -1023,14 +1023,14 @@ namespace BioFVM
                     int initial_index = step * M.snd_data_size;
                     MPI_Irecv(&(block3d[initial_index]), M.rcv_data_size, MPI_DOUBLE, rank-1, step, mpi_Cart_comm, &(recv_req[step]));
                 }
-                if (M.last_iteration)
+                if (M.snd_data_size_last != 0)
                     MPI_Irecv(&(block3d[granurality*M.snd_data_size]), M.rcv_data_size_last, MPI_DOUBLE, rank-1, granurality, mpi_Cart_comm, &(recv_req[granurality]));
                 for (int step = 0; step < granurality; ++step)
                 {
                     int initial_index = step * M.snd_data_size;
                     MPI_Wait(&recv_req[step], MPI_STATUS_IGNORE);
                     #pragma omp parallel for
-                    for (int index = initial_index; index < initial_index + M.thomas_k_jump; index += M.thomas_k_jump)
+                    for (int index = initial_index; index < initial_index + M.snd_data_size; index += M.thomas_k_jump)
                     {
                         // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, block3d[k][j]);
                         int index_dec = index;
@@ -1065,7 +1065,7 @@ namespace BioFVM
                         MPI_Isend(&((*M.p_density_vectors)[(x_end * M.thomas_i_jump) + initial_index]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, mpi_Cart_comm, &send_req[step]);
                     }
                 }
-                if (M.last_iteration)
+                if (M.snd_data_size_last != 0)
                 {
                     int initial_index = granurality * M.snd_data_size;
                     MPI_Wait(&recv_req[granurality], MPI_STATUS_IGNORE); 
@@ -1112,10 +1112,11 @@ namespace BioFVM
                     }
                 }
             }
-        }
+        } 
         /*-----------------------------------------------------------------------------------*/
         /*                         CODE FOR BACK SUBSITUTION                                 */
         /*-----------------------------------------------------------------------------------*/
+        
         if (rank == (size - 1))
         {
             for (int step = 0; step < granurality; ++step)
@@ -1144,7 +1145,7 @@ namespace BioFVM
             }
 
             //Last iteration
-            if (M.last_iteration) {
+            if (M.snd_data_size_last !=0) {
                 int initial_index = ((M.mesh.x_size - 1)*M.thomas_i_jump) + (granurality * M.snd_data_size);
                 #pragma omp parallel for
                 for (int index = initial_index; index < initial_index + M.snd_data_size_last; index += M.mesh.n_substrates)
@@ -1173,7 +1174,7 @@ namespace BioFVM
         {
             for (int step = 0; step < granurality; ++step) {
                 MPI_Irecv(&(block3d[step*M.snd_data_size]), M.rcv_data_size, MPI_DOUBLE, rank+1, step, mpi_Cart_comm, &recv_req[step]);}
-            if (M.last_iteration)
+            if (M.snd_data_size_last != 0)
                 MPI_Irecv(&(block3d[granurality*M.snd_data_size]), M.rcv_data_size_last, MPI_DOUBLE, rank+1, granurality, mpi_Cart_comm, &recv_req[granurality]);
             
             for (int step = 0; step < granurality; ++step)
@@ -1210,7 +1211,7 @@ namespace BioFVM
                     MPI_Isend(&((*M.p_density_vectors)[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, mpi_Cart_comm, &send_req[step]);
                 }
             }
-            if (M.last_iteration)
+            if (M.snd_data_size_last != 0)
             {
                 int initial_index = ((M.mesh.x_size - 1)*M.thomas_i_jump) + (granurality * M.snd_data_size);
                 int index_3d_initial = (granurality * M.snd_data_size);
@@ -1243,6 +1244,7 @@ namespace BioFVM
                 }
             }
         }
+        
         MPI_Barrier(mpi_Cart_comm);
         /*
         end_time = std::chrono::high_resolution_clock::now();
@@ -1257,6 +1259,7 @@ namespace BioFVM
         //apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
 
         //start_time = std::chrono::high_resolution_clock::now();
+        
         #pragma omp parallel for collapse(2)
         for (int i = 0; i < M.mesh.x_size; i++)
         {
@@ -1302,7 +1305,7 @@ namespace BioFVM
                     index = index_dec;
                 }
             }
-        }
+        } 
         /*
         end_time = std::chrono::high_resolution_clock::now();
         duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
@@ -1326,7 +1329,7 @@ namespace BioFVM
 
                 int index = i * M.thomas_i_jump + j * M.thomas_j_jump;
                 //(*(*M.p_density_vectors))[n] /= M.thomas_denomz[0];
-                for (int d = 0; d < M.thomas_j_jump; d++)
+                for (int d = 0; d < M.thomas_k_jump; d++)
                 {
                     (*M.p_density_vectors)[index + d] /= M.thomas_denomz[0][d];
                 }
@@ -1402,7 +1405,6 @@ namespace BioFVM
 
     void diffusion_decay_solver__constant_coefficients_LOD_3D_AVX256D(Microenvironment &M, double dt, int size, int rank, int *coords, int *dims, MPI_Comm mpi_Cart_comm){
         uint granurality = M.granurality;
-        MPI_Request send_req[granurality], recv_req[granurality];
         //std::ofstream file(M.timing_csv, std::ios::app);
         int vl = 4;
 
@@ -1678,6 +1680,9 @@ namespace BioFVM
             M.diffusion_solver_vectorized_setup_done = true;
             } 
     
+        int n_req = granurality;
+        if (M.snd_data_size_last != 0) n_req += 1;
+        MPI_Request send_req[n_req], recv_req[n_req];
         double block3d[M.thomas_i_jump]; //Aux structure of the size: Y*Z*Substrates
 
         //auto start_time = std::chrono::high_resolution_clock::now();
@@ -1685,9 +1690,10 @@ namespace BioFVM
         //auto end_time = std::chrono::high_resolution_clock::now();
         //auto apply_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
         //cout << "Peto aqui!" << endl;
-        start_time = std::chrono::high_resolution_clock::now();
+        //start_time = std::chrono::high_resolution_clock::now();
         //X-diffusion vector_x_v2
         //start_time = std::chrono::high_resolution_clock::now();
+        
         if (rank == 0)
         {
             for (int step = 0; step < granurality; ++step)
@@ -1699,7 +1705,7 @@ namespace BioFVM
                 for (int index = initial_index; index < limit_vec; index += vl)
                 {
                     int index_dec = index;
-                    int gd = index%M.gvec_size;
+                    int gd = (index - initial_index)%M.gvec_size;
 
                     __m256d denomx1 = _mm256_loadu_pd(&M.gthomas_denomx[0][gd]);
                     __m256d density1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index]);
@@ -1810,14 +1816,14 @@ namespace BioFVM
                     int limit_vec = limit - (M.snd_data_size%vl);
                     MPI_Wait(&(recv_req[step]), MPI_STATUS_IGNORE);
                     #pragma omp parallel for
-                    for (int index = initial_index; index < limit; index += vl)
+                    for (int index = initial_index; index < limit_vec; index += vl)
                     {
                         // axpy(&(*M.microenvironment)[n], M.thomas_constant1, block3d[k][j]);
                         int index_dec = index;
-                        int gd = index%M.gvec_size;
+                        int gd = (index-initial_index)%M.gvec_size;
                         __m256d constant1 = _mm256_loadu_pd(&M.gthomas_constant1[gd]);
-                        __m256d density_curr1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index]);
-                        __m256d density_inc1 = _mm256_loadu_pd(&block3d[index]);
+                        __m256d density_inc1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index]);
+                        __m256d density_curr1 = _mm256_loadu_pd(&block3d[index]);
                         __m256d denomy1 = _mm256_loadu_pd(&M.gthomas_denomx[0][gd]);
                 
 
@@ -1894,7 +1900,7 @@ namespace BioFVM
                     {
                         // axpy(&(*M.microenvironment)[n], M.thomas_constant1, block3d[k][j]);
                         int index_dec = index;
-                        for (int d = 0; d < M.thomas_k_jump; d++)
+                        for (int d = 0; d < M.mesh.n_substrates; d++)
                         {
                             (*M.p_density_vectors)[index + d] += M.thomas_constant1[d] * block3d[index + d];
                         }
@@ -1939,7 +1945,7 @@ namespace BioFVM
         /*-----------------------------------------------------------------------------------*/
         /*                         CODE FOR BACK SUBSITUTION                                 */
         /*-----------------------------------------------------------------------------------*/
-
+        
         if (rank == (size - 1))
         {
             for (int step = 0; step < granurality; ++step)
@@ -1952,7 +1958,7 @@ namespace BioFVM
                 for (int index = initial_index; index < limit_vec; index += vl)
                 {
                     int index_aux = index;
-                    int gd = (index - last_xplane)%M.gvec_size;
+                    int gd = (index - initial_index)%M.gvec_size;
                     for (int i = M.mesh.x_size - 2; i >= 0; i--)
                     {
                         int index_dec = index_aux - M.thomas_i_jump;
@@ -1971,7 +1977,7 @@ namespace BioFVM
                 
                 for (int index = limit_vec; index < limit; ++index){
                     int index_aux = index;
-                    int d = (index - last_xplane) % M.mesh.n_substrates;
+                    int d = (index - initial_index) % M.mesh.n_substrates;
                     for (int i = M.mesh.x_size - 2; i >= 0; i--)
                     {
                         int index_dec = index_aux - M.thomas_i_jump;
@@ -2036,10 +2042,10 @@ namespace BioFVM
                 {
                     int index_aux = index;
                     int index_3d = index - last_xplane;
-                    int gd = index_3d%M.gvec_size;
+                    int gd = (index - initial_index)%M.gvec_size;
                     __m256d cy1 = _mm256_loadu_pd(&M.gthomas_cx[M.mesh.x_size-1][gd]);
-                    __m256d density_curr1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_aux]);
-                    __m256d density_dec1 = _mm256_loadu_pd(&block3d[index_3d]);
+                    __m256d density_dec1 = _mm256_loadu_pd(&(*M.p_density_vectors)[index_aux]);
+                    __m256d density_curr1 = _mm256_loadu_pd(&block3d[index_3d]);
 
                     density_curr1 = _mm256_fnmadd_pd(cy1, density_curr1, density_dec1);
 
@@ -2098,7 +2104,7 @@ namespace BioFVM
                     //int index = j * M.j_jump + k * M.k_jump + (M.mesh.x_coordinates.size() - 1) * M.i_jump;
                     int index_3d = index_3d_initial + offset;
                     // naxpy(&(*M.microenvironment)[n], M.thomas_cx[M.mesh.x_coordinates.size() - 1], block3d[k][j]);
-                    for (int d = 0; d < M.thomas_k_jump; d++)
+                    for (int d = 0; d < M.mesh.n_substrates; d++)
                     {
                         (*M.p_density_vectors)[index_aux + d] -= M.thomas_cx[M.mesh.x_size - 1][d] * block3d[index_3d + d];
                     }
@@ -2125,7 +2131,6 @@ namespace BioFVM
         }
     //end_time = std::chrono::high_resolution_clock::now();
     //auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-    //cout << "Peto aqui2!" << endl;
 
     //if (rank == 0)
         //file << duration_us << ",";
@@ -2237,7 +2242,6 @@ namespace BioFVM
                 index_base+=M.thomas_k_jump;
                 index_dec+=M.thomas_k_jump;
             }
-
         }
     }
     //end_time = std::chrono::high_resolution_clock::now();
@@ -2266,12 +2270,11 @@ namespace BioFVM
             // should be an empty loop if mesh.z_coordinates.size() < 2
             for (int k = 1; k < M.mesh.z_size; k++)
             {
-
                 int index_inc = index + M.thomas_k_jump;
                 // axpy(&(*(*M.p_density_vectors))[n], M.thomas_constant1, (*(*M.p_density_vectors))[n - M.thomas_k_jump]);
                 for (int d = 0; d < M.mesh.n_substrates; d++)
                 {
-                    (*M.p_density_vectors)[index_inc + d] += (*M.p_density_vectors)[d] * (*M.p_density_vectors)[index + d];
+                    (*M.p_density_vectors)[index_inc + d] += M.thomas_constant1[d] * (*M.p_density_vectors)[index + d];
                 }
                 //(*(*M.p_density_vectors))[n] /= M.thomas_denomz[k];
                 for (int d = 0; d < M.mesh.n_substrates; d++)
@@ -2321,31 +2324,36 @@ namespace BioFVM
         //std::cout << "Rank " << rank << " esta imprimiendo densidades" << std::endl;
         std::string filename = *file_name;
         std::ofstream outputFile(filename, std::ios::app);
-        int index = 0;
-        for (int i = 0; i < M.mesh.x_size; i++)
-        {
-            for (int j = 0; j < M.mesh.y_size; j++)
-            {
-                for (int k = 0; k < M.mesh.z_size; k++)
+        for (int ser_ctr =0; ser_ctr < size; ++ser_ctr) {
+            int index = 0;
+            if (ser_ctr == rank) {
+                for (int i = 0; i < M.mesh.x_size; i++)
                 {
-                    std::cout << (M.mesh.x_coordinates.size()*rank) + i << " " << j << " " << k << " : ";
-                    for (int d = 0; d < M.number_of_densities(); ++d)
+                    for (int j = 0; j < M.mesh.y_size; j++)
                     {
-                        outputFile << (*M.p_density_vectors)[index] << " ";
-                        std::cout << (*M.p_density_vectors)[index] << " ";
-                        ++index;
+                        for (int k = 0; k < M.mesh.z_size; k++)
+                        {
+                            outputFile << (M.mesh.x_coordinates.size()*rank) + i << " " << j << " " << k << " : ";
+                            for (int d = 0; d < M.number_of_densities(); ++d)
+                            {
+                                outputFile << (*M.p_density_vectors)[index] << " ";
+                                //std::cout << (*M.p_density_vectors)[index] << " ";
+                                ++index;
+                            }
+                            //std::cout << endl;
+                            outputFile << std::endl;
+                        }
                     }
-                    std::cout << endl;
-                    outputFile << std::endl;
                 }
             }
+            outputFile << std::flush;
+            MPI_Barrier(mpi_Cart_comm);
         }
-        std::chrono::seconds dura(15);
-        std::this_thread::sleep_for( dura );
+        
 
         //flush write buffer
-        std::cout << std::flush;
-        outputFile << std::flush;
+        //std::cout << std::flush;
+        
     }
 
 };

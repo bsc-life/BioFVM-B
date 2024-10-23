@@ -1337,7 +1337,9 @@ void read_microenvironment_from_MultiCellDS_xml( Microenvironment& M_destination
 			for( int j=0 ; j < M_destination.mesh.voxels.size() ; j++ )
 			{
 				csv_to_vector( node.first_child().value() , M_destination.density_vector(j)  ); 
-				ifread_microenvironment_from_MultiCellDS_xml= node.parent(); 
+				std::cout << "Warning!" << std::endl;
+				//read_microenvironment_from_MultiCellDS_xml= node.parent(); 
+			}
 		}
 		root = root.next_sibling(); 
 	}		

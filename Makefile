@@ -129,12 +129,15 @@ testVS:  ./examples/test_VS.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 	$(COMPILE_COMMAND) -o ./test_VS ./examples/test_VS.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 dirichlet_test:  ./examples/dirichlet_test.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 	$(COMPILE_COMMAND) -o ./dirichlet_test ./examples/dirichlet_test.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
+solver_test:  ./examples/solver_test.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
+	$(COMPILE_COMMAND) -o ./solver_test ./examples/solver_test.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 
 clean:
 	rm -f *.o
 	rm -f $(PROGRAM_NAME)*
 	rm -f ./examples/conv_test*
 	rm -f ./examples/perf_test*
+	rm -f solver_test
 
 zip:
 	zip $$(date +%b_%d_%Y_%H%M).zip *.cpp *.h *akefile* *.xml *.tex *.bib *hanges*.txt config/*.xml *.txt

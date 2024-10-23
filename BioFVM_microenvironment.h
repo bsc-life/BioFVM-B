@@ -268,7 +268,7 @@ namespace BioFVM
 
 		//friend void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &M, double dt, int size, int rank, int granurality, int *coords, int *dims, MPI_Comm mpi_Cart_comm);
 		friend void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); //-->Gaurav Saxena changed this prototype
-		friend void diffusion_decay_solver__constant_coefficients_LOD_3D_vectorized(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); 
+		friend void diffusion_decay_solver__constant_coefficients_LOD_3D_AVX256D(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); 
 		friend void diffusion_decay_solver__constant_coefficients_LOD_2D(Microenvironment &S, double dt);
 
 		friend void diffusion_decay_explicit_uniform_rates(Microenvironment &M, double dt);
@@ -294,7 +294,7 @@ namespace BioFVM
 
 	//extern void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &M, double dt, int size, int rank, int granurality, int *coords, int *dims, MPI_Comm mpi_Cart_comm);
 	extern void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank, int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); //-->Gaurav Saxena changed this prototype
-	extern void diffusion_decay_solver__constant_coefficients_LOD_3D_vectorized(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); 
+	extern void diffusion_decay_solver__constant_coefficients_LOD_3D_AVX256D(Microenvironment &S, double dt, int mpi_Size, int mpi_Rank,int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); 
 	extern void diffusion_decay_solver__constant_coefficients_LOD_2D(Microenvironment &S, double dt);
 
 	extern void diffusion_decay_solver__variable_coefficients_LOD_3D(Microenvironment &S, double dt);
