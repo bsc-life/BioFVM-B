@@ -1,6 +1,5 @@
 *.o
 *.log
-*.sh
 error*
 output*
 output/*
