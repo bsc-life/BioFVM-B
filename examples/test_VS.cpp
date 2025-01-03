@@ -279,7 +279,7 @@ int main(int argc, char *argv[])
 	microenvironment.apply_dirichlet_conditions(mpi_Rank, mpi_Size);
 
 	std::string output_name= "result_" + std::to_string(t)+  ".txt";
-	microenvironment.print_result(dt, mpi_Size, mpi_Rank, mpi_Coords , &output_name , mpi_Dims, mpi_Cart_comm);
+	//microenvironment.print_result(dt, mpi_Size, mpi_Rank, mpi_Coords , &output_name , mpi_Dims, mpi_Cart_comm);
 
 	for (int i = 0; i < 199; ++i) {
 		auto start_time = std::chrono::high_resolution_clock::now();
@@ -294,7 +294,7 @@ int main(int argc, char *argv[])
 
 	
 	output_name= "result_" + std::to_string(t)+  ".txt";
-	microenvironment.print_result(dt, mpi_Size, mpi_Rank, mpi_Coords , &output_name , mpi_Dims, mpi_Cart_comm);
+	//microenvironment.print_result(dt, mpi_Size, mpi_Rank, mpi_Coords , &output_name , mpi_Dims, mpi_Cart_comm);
 	
 	
 	if (mpi_Rank == 0)

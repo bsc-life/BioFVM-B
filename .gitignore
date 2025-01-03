@@ -5,4 +5,4 @@ error*
 output*
 output/*
 extrae.xml
-.vscode
+.vscode/
