@@ -180,16 +180,25 @@ int main(int argc, char *argv[])
 	/* Suppose we give 100 then domain in all directions is -100 to +100 	*/
 	/*--------------------------------------------------------------------*/
 
-	double domain_half_side = strtod(argv[1], NULL);
-	int granurality = atoi(argv[2]);
+	//Read parameters
+	std::string csv_name = "./diffusion_timing.csv";
+	double domain_half_side;
+	int granurality;
+	int num_substrates;
+	if (argc >= 4) {
+		domain_half_side = strtod(argv[1], NULL);
+		granurality = atoi(argv[2]);
 
-	int num_substrates = atoi(argv[3]);
+		num_substrates = atoi(argv[3]);
 
-	std::string csv_name = argv[4];
-	std::cout << "Timing result will be stored in " << csv_name << std::endl;
-
-	std::ofstream file(csv_name, std::ios::app);
-	//if (mpi_Rank == 0) file << "Half side," << domain_half_side << ",Granurality," << granurality << ",Substrates," << num_substrates << std::endl;
+		if (argc == 5) csv_name = argv[4];
+	}
+	else {
+		std::cout << "Error: Insufficient arguments provided." << std::endl;
+    	std::cout << "Usage: <program_name> <domain_half_side> <number_of_blocks> <num_substrates> [csv_name]" << std::endl;
+		MPI_Finalize();
+	}
+	
 	/*------------------------------------------------------------------------------------*/
 	/* For the parallel version, we are going to update the central voxel of EACH process */
 	/*------------------------------------------------------------------------------------*/
@@ -206,15 +215,11 @@ int main(int argc, char *argv[])
 
 	// create a microenvironment;
 
-    cout << "Rank: " << mpi_Rank << " Microenvironment declaration " << endl;
 	Microenvironment microenvironment;
 	microenvironment.set_density(0, "substrate0", "dimensionless");
-	cout << "Rank: " << mpi_Rank << " Microenvironment set coefficient and decay rates " << endl;
 	microenvironment.diffusion_coefficients[0] = 100000;
 	microenvironment.decay_rates[0] = 0.1;
 
-
-	cout << "Rank: " << mpi_Rank << " adding substrates " << endl;
 	for (int i = 1; i < num_substrates; i++)
 	{
 		std::string substrate_name;
@@ -228,19 +233,17 @@ int main(int argc, char *argv[])
 		//substrates_sources.push_back(get_rand(30.0, 60.0));
 	}
 
-	cout << "Resize space uniform" << endl;
 	double minX = -domain_half_side, minY = -domain_half_side, minZ = -domain_half_side, maxX = domain_half_side, maxY = domain_half_side, maxZ = domain_half_side; //, mesh_resolution=10;
 	microenvironment.resize_space_uniform(minX, maxX, minY, maxY, minZ, maxZ, mesh_resolution, mpi_Dims, mpi_Coords);
 
 	// register the diffusion solver
-	microenvironment.diffusion_decay_solver = diffusion_decay_solver__constant_coefficients_LOD_3D;
+	microenvironment.diffusion_decay_solver = diffusion_decay_solver__constant_coefficients_LOD_3D_AVX256D;
 	microenvironment.print_voxels_densities = print_voxels_densities;
 
 	microenvironment.bulk_supply_rate_function = supply_function;
 	microenvironment.bulk_supply_target_densities_function = supply_target_function;
 	microenvironment.timing_csv = csv_name;
 
-	cout << "Adding subsrate" << endl;
 	vector<double> subs(num_substrates, 1);
 	for (int i = 0; i < microenvironment.mesh.x_size; i++)
 	{
@@ -251,11 +254,11 @@ int main(int argc, char *argv[])
 				int index =  i*microenvironment.mesh.y_size*microenvironment.mesh.z_size*num_substrates + 
 							 j*microenvironment.mesh.z_size*num_substrates+
 							 k*num_substrates;
-				copy(subs.begin(), subs.end(), microenvironment.p_density_vectors.begin() + index);
+				copy(subs.begin(), subs.end(), (*microenvironment.p_density_vectors).begin() + index);
 			}
 		}
 	}
-	cout << "Substrate has been added" << endl;
+	
 
 	center_voxel_index = (microenvironment.mesh.x_coordinates.size() * microenvironment.mesh.y_coordinates.size() * microenvironment.mesh.z_coordinates.size()) / 2;
 
@@ -273,50 +276,26 @@ int main(int argc, char *argv[])
 
 	int output_index = 0;
 
-
-	// simulate microenvironment
-	//microenvironment.simulate_bulk_sources_and_sinks(dt);
-	cout << "Diffusion is going to start" << endl;
-
 	microenvironment.apply_dirichlet_conditions(mpi_Rank, mpi_Size);
 
-	/*
-	string output_name = "initial_" + std::to_string(t) + ".txt";
-	for (int writer = 0; writer < mpi_Size; ++writer) {
-		if (writer == mpi_Rank) microenvironment.print_result(dt, mpi_Size, mpi_Rank, mpi_Coords , &output_name , mpi_Dims, mpi_Cart_comm);
-		MPI_Barrier(MPI_COMM_WORLD);
-	}
-	*/
-		//BioFVM::TIC(0);
-		for (int i = 0; i < 199; ++i) {
-			auto start_time = std::chrono::high_resolution_clock::now();
-        
-			microenvironment.simulate_diffusion_decay(dt, mpi_Size, mpi_Rank, granurality , mpi_Coords,mpi_Dims, mpi_Cart_comm);
-		//double duration = BioFVM::TOC(0);
-		//cout << "RANK " << mpi_Rank << " Duration of diffusion " << duration << endl;
-			auto end_time = std::chrono::high_resolution_clock::now();
-        	auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
-        	if (mpi_Rank == 0) std::cout << "Time taken: " << duration_ms << "ms" << std::endl;
-			t += dt;
-		}
-	/*while (t < t_max) {
-		BioFVM::TIC(0);
-		microenvironment.simulate_diffusion_decay(dt, mpi_Size, mpi_Rank, mpi_Coords,mpi_Dims, mpi_Cart_comm);
-		double duration = BioFVM::TOC(0);
-		cout << "RANK " << mpi_Rank << " Duration of diffusion " << duration << endl;
-		t += dt;
-	}*/
-	//t += dt;
-	//output_index++;
+	std::string output_name= "result_" + std::to_string(t)+  ".txt";
+	microenvironment.print_result(dt, mpi_Size, mpi_Rank, mpi_Coords , &output_name , mpi_Dims, mpi_Cart_comm);
 
+	for (int i = 0; i < 199; ++i) {
+		auto start_time = std::chrono::high_resolution_clock::now();
+		microenvironment.simulate_diffusion_decay(dt, mpi_Size, mpi_Rank, mpi_Coords,mpi_Dims, mpi_Cart_comm);
+		auto end_time = std::chrono::high_resolution_clock::now();
+		auto duration_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+		if (mpi_Rank == 0) std::cout << "Time taken: " << duration_ms << "ms" << std::endl;
+		t += dt;
+	}
+	
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	/*
+	
 	output_name= "result_" + std::to_string(t)+  ".txt";
-	for (int writer = 0; writer < mpi_Size; ++writer) {
-		if (writer == mpi_Rank) microenvironment.print_result(dt, mpi_Size, mpi_Rank, mpi_Coords , &output_name , mpi_Dims, mpi_Cart_comm);
-		MPI_Barrier(MPI_COMM_WORLD);
-	}*/
+	microenvironment.print_result(dt, mpi_Size, mpi_Rank, mpi_Coords , &output_name , mpi_Dims, mpi_Cart_comm);
+	
 	
 	if (mpi_Rank == 0)
 		process_output(t_max, dt, mesh_resolution);
@@ -324,8 +303,8 @@ int main(int argc, char *argv[])
 	BioFVM::RUNTIME_TOC();
 	MPI_Barrier(MPI_COMM_WORLD);
 
-	if (mpi_Rank == 0)
-		write_report(microenvironment.number_of_voxels() * mpi_Size, BioFVM::runtime_stopwatch_value());
+	//if (mpi_Rank == 0)
+	//	write_report(microenvironment.number_of_voxels() * mpi_Size, BioFVM::runtime_stopwatch_value());
 	
 	MPI_Finalize();
 	return 0;

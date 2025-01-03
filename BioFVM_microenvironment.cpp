@@ -1642,6 +1642,7 @@ void Microenvironment::compute_gradient_vector( int n ) {
 		return;
 	}
 
+
 	//BioFVM-B for testing porpuses
 	bool Microenvironment::compare_microenvironment(Microenvironment reference) {
 		bool identical = true;

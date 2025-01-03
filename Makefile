@@ -5,6 +5,11 @@ PROGRAM_NAME := make_lib
 #For GCC
 CC := mpic++
 
+TIMING_FLAG =
+ifdef ENABLE_TIMING
+    TIMING_FLAG = -DTIMING
+endif
+
 #For Intel
 #CC := mpicxx
 
@@ -87,7 +92,7 @@ BioFVM_MultiCellDS.o: BioFVM_MultiCellDS.cpp
 	$(COMPILE_COMMAND) -c BioFVM_MultiCellDS.cpp
 
 BioFVM_parallel.o: BioFVM_parallel.cpp
-	$(COMPILE_COMMAND) -c BioFVM_parallel.cpp
+	$(COMPILE_COMMAND) -c BioFVM_parallel.cpp $(TIMING_FLAG)
 
 pugixml.o: pugixml.cpp
 	$(COMPILE_COMMAND) -c pugixml.cpp
@@ -125,7 +130,7 @@ capVoxels:  ./examples/cap_voxels.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 	$(COMPILE_COMMAND) -o ./capVoxels ./examples/cap_voxels.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 capVoxelspaper: ./examples/cap_voxels.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 	$(COMPILE_COMMAND) -DPAPER -o ./capVoxelsPaper ./examples/cap_voxels.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
-testVS:  ./examples/test_VS.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
+testVS:  ./examples/test_VS.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS) 
 	$(COMPILE_COMMAND) -o ./test_VS ./examples/test_VS.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 dirichlet_test:  ./examples/dirichlet_test.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
 	$(COMPILE_COMMAND) -o ./dirichlet_test ./examples/dirichlet_test.cpp $(BioFVM_OBJECTS) $(pugixml_OBJECTS)
@@ -138,6 +143,7 @@ clean:
 	rm -f ./examples/conv_test*
 	rm -f ./examples/perf_test*
 	rm -f solver_test
+	rm -f test_VS
 
 zip:
 	zip $$(date +%b_%d_%Y_%H%M).zip *.cpp *.h *akefile* *.xml *.tex *.bib *hanges*.txt config/*.xml *.txt

@@ -66,6 +66,10 @@
         "iomanip": "cpp",
         "mutex": "cpp",
         "sstream": "cpp",
-        "__nullptr": "cpp"
+        "__nullptr": "cpp",
+        "__functional_03": "cpp",
+        "__string": "cpp",
+        "queue": "cpp",
+        "stack": "cpp"
     }
 }

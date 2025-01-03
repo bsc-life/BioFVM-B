@@ -691,8 +691,10 @@ namespace BioFVM
     // #define DENSITY(X,Y,Z) (*(M.p_density_vectors[(X)]))[(Y)*M.mesh.z_size+(Z)]
     void diffusion_decay_solver__constant_coefficients_LOD_3D(Microenvironment &M, double dt, int size, int rank, int *coords, int *dims, MPI_Comm mpi_Cart_comm)
     {
-        
+        #ifdef TIMING
         std::ofstream file(M.timing_csv, std::ios::app);
+        #endif
+        if (M.granurality <= 0) M.granurality = size; //Default value if none
         uint granurality = M.granurality;
         double t_strt_set, t_end_set;
         double t_strt_x, t_end_x;
@@ -710,6 +712,9 @@ namespace BioFVM
 
         if (!M.diffusion_solver_setup_done)
         {
+            MPI_Request send_req[size];
+            MPI_Request recv_req[size];
+            
             M.mesh.x_size = M.mesh.x_coordinates.size();
             M.mesh.y_size = M.mesh.y_coordinates.size();
             M.mesh.z_size = M.mesh.z_coordinates.size();
@@ -719,30 +724,24 @@ namespace BioFVM
             M.thomas_j_jump = M.mesh.z_size * M.mesh.n_substrates;
             M.thomas_k_jump = M.mesh.n_substrates;
 
-            int y_size = M.mesh.y_coordinates.size();
-            int z_size = M.mesh.z_coordinates.size();
-            int p_size = M.number_of_densities(); 
 
-            int step_size = (z_size * y_size) / granurality;
+            vector<double> zero(M.mesh.n_substrates, 0.0);
+            vector<double> one(M.mesh.n_substrates, 1.0);
+            double dt = 0.01;
 
-            M.snd_data_size = step_size * p_size; // Number of data elements to be sent
-            M.rcv_data_size = step_size * p_size; // All p_density_vectors elements have same size, use anyone
+            int step_size = (M.mesh.z_size * M.mesh.y_size) / granurality;
+            
 
-            M.snd_data_size_last = ((z_size * y_size) % granurality) * p_size; // Number of data elements to be sent
-            M.rcv_data_size_last = ((z_size * y_size) % granurality) * p_size;
-            M.last_iteration = ((z_size * y_size) % granurality) > 0;
 
-            /*-------------------------------------------------------------*/
-            /* x_coordinates are of size local_x_nodes                     */
-            /* (see function resize() of class Cartesian Mesh in           */
-            /* BioFVM_parallel.cpp.                                        */
-            /* Each line of Voxels going from left to right forms          */
-            /* a tridiagonal system of Equations                           */
-            /* Now these lines are going to split in the X decomposition   */
-            /*-------------------------------------------------------------*/
+            M.snd_data_size = step_size * M.mesh.n_substrates; // Number of data elements to be sent
+            M.rcv_data_size = step_size * M.mesh.n_substrates; // All p_density_vectors elements have same size, use anyone
 
-            M.thomas_denomx.resize(M.mesh.x_coordinates.size(), M.zero); // sizeof(x_coordinates) = local_x_nodes, denomx is the main diagonal elements
-            M.thomas_cx.resize(M.mesh.x_coordinates.size(), M.zero);     // Both b and c of tridiagonal matrix are equal, hence just one array needed
+            M.snd_data_size_last = ((M.mesh.z_size * M.mesh.y_size) % granurality) * M.mesh.n_substrates; // Number of data elements to be sent
+            M.rcv_data_size_last = ((M.mesh.z_size * M.mesh.y_size) % granurality) * M.mesh.n_substrates;
+
+            //Thomas initialization
+            M.thomas_denomx.resize(M.mesh.x_size, zero); // sizeof(x_coordinates) = local_x_nodes, denomx is the main diagonal elements
+            M.thomas_cx.resize(M.mesh.x_size, zero);     // Both b and c of tridiagonal matrix are equal, hence just one array needed
 
             /*-------------------------------------------------------------*/
             /* y_coordinates are of size of local_y_nodes.                 */
@@ -750,8 +749,8 @@ namespace BioFVM
             /* from bottom to top forms a tridiagonal system of Equations  */
             /*-------------------------------------------------------------*/
 
-            M.thomas_denomy.resize(M.mesh.y_coordinates.size(), M.zero);
-            M.thomas_cy.resize(M.mesh.y_coordinates.size(), M.zero);
+            M.thomas_denomy.resize(M.mesh.y_size, zero);
+            M.thomas_cy.resize(M.mesh.y_size, zero);
 
             /*-------------------------------------------------------------*/
             /* z_coordinates are of size of local_z_nodes.                 */
@@ -759,8 +758,8 @@ namespace BioFVM
             /* from front to back forms a tridiagonal system of Equations  */
             /*-------------------------------------------------------------*/
 
-            M.thomas_denomz.resize(M.mesh.z_coordinates.size(), M.zero);
-            M.thomas_cz.resize(M.mesh.z_coordinates.size(), M.zero);
+            M.thomas_denomz.resize(M.mesh.z_size, zero);
+            M.thomas_cz.resize(M.mesh.z_size, zero);
 
             /*-------------------------------------------------------------*/
             /* For X-decomposition thomas_i_jump - 1 can be in the previous*/
@@ -769,9 +768,9 @@ namespace BioFVM
             /* but we CANNOT use thomas_i_jump safely                      */
             /*-------------------------------------------------------------*/
 
-            M.thomas_i_jump = M.number_of_densities() * M.mesh.z_coordinates.size() * M.mesh.y_coordinates.size();
-            M.thomas_j_jump = M.number_of_densities() * M.mesh.z_coordinates.size();
-            M.thomas_k_jump = M.number_of_densities(); // M.thomas_j_jump * M.mesh.y_coordinates.size();
+            int i_jump = M.mesh.y_size*M.mesh.z_size*M.mesh.n_substrates;
+            int j_jump = M.mesh.z_size*M.mesh.n_substrates;
+            int k_jump = M.mesh.n_substrates; 
 
             /*-------------------------------------------------------------*/
             /* This part below of defining constants SHOULD typically      */
@@ -785,8 +784,8 @@ namespace BioFVM
             M.thomas_constant3a = M.one;                   // 1 + constant1 + constant2;
 
             M.thomas_constant1 *= dt;
-            M.thomas_constant1 /= M.mesh.dx;
-            M.thomas_constant1 /= M.mesh.dx;
+            M.thomas_constant1 /= M.mesh.dx; //dx
+            M.thomas_constant1 /= M.mesh.dx; //dx
 
             M.thomas_constant1a = M.thomas_constant1;
             M.thomas_constant1a *= -1.0;
@@ -808,17 +807,17 @@ namespace BioFVM
             /* the assignments below for y,z should not be changed                */
             /*--------------------------------------------------------------------*/
 
-            M.thomas_cx.assign(M.mesh.x_coordinates.size(), M.thomas_constant1a);    // Fill b and c elements with -D * dt/dx^2
-            M.thomas_denomx.assign(M.mesh.x_coordinates.size(), M.thomas_constant3); // Fill diagonal elements with (1 + 1/3 * lambda * dt + 2*D*dt/dx^2)
+            M.thomas_cx.assign(M.mesh.x_size, M.thomas_constant1a);    // Fill b and c elements with -D * dt/dx^2
+            M.thomas_denomx.assign(M.mesh.x_size, M.thomas_constant3); // Fill diagonal elements with (1 + 1/3 * lambda * dt + 2*D*dt/dx^2)
 
             if (rank == 0)
                 M.thomas_denomx[0] = M.thomas_constant3a; // First diagonal element is   (1 + 1/3 * lambda * dt + 1*D*dt/dx^2)
 
             if (rank == (size - 1))
-                M.thomas_denomx[M.mesh.x_coordinates.size() - 1] = M.thomas_constant3a; // Last diagonal element  is   (1 + 1/3 * lambda * dt + 1*D*dt/dx^2)
+                M.thomas_denomx[M.mesh.x_size - 1] = M.thomas_constant3a; // Last diagonal element  is   (1 + 1/3 * lambda * dt + 1*D*dt/dx^2)
 
             if (rank == 0)
-                if (M.mesh.x_coordinates.size() == 1) // This is an extreme case, won't exist, still if it does
+                if (M.mesh.x_size == 1) // This is an extreme case, won't exist, still if it does
                 {                                     // then this must be at rank 0
                     M.thomas_denomx[0] = M.one;
                     M.thomas_denomx[0] += M.thomas_constant2;
@@ -837,7 +836,7 @@ namespace BioFVM
                     if (rank == 0 && rank <= size - 1) // If size=1, then this process does not send data
                     {
 
-                        for (int i = 1; i <= M.mesh.x_coordinates.size() - 1; i++)
+                        for (int i = 1; i <= M.mesh.x_size - 1; i++)
                         {
                             axpy(&M.thomas_denomx[i], M.thomas_constant1, M.thomas_cx[i - 1]);
                             M.thomas_cx[i] /= M.thomas_denomx[i]; // the value at  size-1 is not actually used
@@ -845,7 +844,7 @@ namespace BioFVM
                     }
                     else
                     {
-                        for (int i = 1; i <= M.mesh.x_coordinates.size() - 1; i++)
+                        for (int i = 1; i <= M.mesh.x_size - 1; i++)
                         {
                             axpy(&M.thomas_denomx[i], M.thomas_constant1, M.thomas_cx[i - 1]);
                             M.thomas_cx[i] /= M.thomas_denomx[i]; // the value at  size-1 is not actually used
@@ -854,8 +853,7 @@ namespace BioFVM
 
                     if (rank < (size - 1))
                     {
-                        MPI_Request send_req;
-                        MPI_Isend(&(M.thomas_cx[M.mesh.x_coordinates.size() - 1][0]), M.thomas_cx[M.mesh.x_coordinates.size() - 1].size(), MPI_DOUBLE, ser_ctr + 1, 1111, mpi_Cart_comm, &send_req);
+                        MPI_Isend(&(M.thomas_cx[M.mesh.x_size - 1][0]), M.thomas_cx[M.mesh.x_size - 1].size(), MPI_DOUBLE, ser_ctr + 1, 1111, mpi_Cart_comm, &send_req[0]);
                     }
                 }
 
@@ -863,9 +861,9 @@ namespace BioFVM
                 {
 
                     std::vector<double> temp_cx(M.thomas_cx[0].size());
-                    MPI_Request recv_req;
-                    MPI_Irecv(&temp_cx[0], temp_cx.size(), MPI_DOUBLE, ser_ctr, 1111, mpi_Cart_comm, &recv_req);
-                    MPI_Wait(&recv_req, MPI_STATUS_IGNORE);
+
+                    MPI_Irecv(&temp_cx[0], temp_cx.size(), MPI_DOUBLE, ser_ctr, 1111, mpi_Cart_comm, &recv_req[0]);
+                    MPI_Wait(&recv_req[0], MPI_STATUS_IGNORE);
 
                     axpy(&M.thomas_denomx[0], M.thomas_constant1, temp_cx); // CHECK IF &temp_cz[0] is OK, axpy() in BioFVM_vector.cpp
                     M.thomas_cx[0] /= M.thomas_denomx[0];                   // the value at  size-1 is not actually used
@@ -881,40 +879,42 @@ namespace BioFVM
             /* y_coordinates.size()-1 are on the same process                     */
             /*--------------------------------------------------------------------*/
 
-            M.thomas_cy.assign(M.mesh.y_coordinates.size(), M.thomas_constant1a);
-            M.thomas_denomy.assign(M.mesh.y_coordinates.size(), M.thomas_constant3);
+            M.thomas_cy.assign(M.mesh.y_size, M.thomas_constant1a);
+            M.thomas_denomy.assign(M.mesh.y_size, M.thomas_constant3);
             M.thomas_denomy[0] = M.thomas_constant3a;
-            M.thomas_denomy[M.mesh.y_coordinates.size() - 1] = M.thomas_constant3a;
-            if (M.mesh.y_coordinates.size() == 1)
+            M.thomas_denomy[M.mesh.y_size - 1] = M.thomas_constant3a;
+            if (M.mesh.y_size == 1)
             {
                 M.thomas_denomy[0] = M.one;
                 M.thomas_denomy[0] += M.thomas_constant2;
             }
             M.thomas_cy[0] /= M.thomas_denomy[0];
-            for (int i = 1; i <= M.mesh.y_coordinates.size() - 1; i++)
+            for (int i = 1; i <= M.mesh.y_size - 1; i++)
             {
                 axpy(&M.thomas_denomy[i], M.thomas_constant1, M.thomas_cy[i - 1]);
                 M.thomas_cy[i] /= M.thomas_denomy[i]; // the value at  size-1 is not actually used
             }
 
-            M.thomas_cz.assign(M.mesh.z_coordinates.size(), M.thomas_constant1a);
-            M.thomas_denomz.assign(M.mesh.z_coordinates.size(), M.thomas_constant3);
+            M.thomas_cz.assign(M.mesh.z_size, M.thomas_constant1a);
+            M.thomas_denomz.assign(M.mesh.z_size, M.thomas_constant3);
             M.thomas_denomz[0] = M.thomas_constant3a;
-            M.thomas_denomz[M.mesh.z_coordinates.size() - 1] = M.thomas_constant3a;
-            if (M.mesh.z_coordinates.size() == 1)
+            M.thomas_denomz[M.mesh.z_size - 1] = M.thomas_constant3a;
+            if (M.mesh.z_size == 1)
             {
                 M.thomas_denomz[0] = M.one;
                 M.thomas_denomz[0] += M.thomas_constant2;
             }
             M.thomas_cz[0] /= M.thomas_denomz[0];
-            for (int i = 1; i <= M.mesh.z_coordinates.size() - 1; i++)
+            for (int i = 1; i <= M.mesh.z_size - 1; i++)
             {
                 axpy(&M.thomas_denomz[i], M.thomas_constant1, M.thomas_cz[i - 1]);
                 M.thomas_cz[i] /= M.thomas_denomz[i]; // the value at  size-1 is not actually used
             }
-
             M.diffusion_solver_setup_done = true;
-            //if (rank == 0) file << "X-diffusion,Y-diffusion,Z-diffusion,Apply Dirichlet" << std::endl;
+
+            #ifdef TIMING
+                if (rank == 0) file << "X-diffusion,Y-diffusion,Z-diffusion,Apply Dirichlet" << std::endl;
+            #endif
         }
 
         int n_req = granurality;
@@ -923,7 +923,16 @@ namespace BioFVM
         MPI_Request recv_req[n_req];
         std::vector<double> block3d(M.thomas_i_jump); //The message to send is of the size Y_voxels * Z_voxels * Substrates
 
+       #ifdef TIMING
+        auto start_time = std::chrono::high_resolution_clock::now();
+        #endif
         M.apply_dirichlet_conditions(rank, size);
+        #ifdef TIMING
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto apply_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+
+        start_time = std::chrono::high_resolution_clock::now();
+        #endif
 
         /*-----------------------------------------------------------------------------------*/
         /*                        FORWARD ELIMINATION - x DIRECTION/DECOMPOSITION            */
@@ -1246,19 +1255,21 @@ namespace BioFVM
         }
         
         MPI_Barrier(mpi_Cart_comm);
-        /*
+
+        #ifdef TIMING
         end_time = std::chrono::high_resolution_clock::now();
         auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-        if (rank == 0)
-            file << duration_us << ",";
-        */
-       
-        //start_time = std::chrono::high_resolution_clock::now();
+        if (rank == 0) file << duration_us << ",";
+        start_time = std::chrono::high_resolution_clock::now();
+        #endif
         M.apply_dirichlet_conditions(rank, size);
-        //end_time = std::chrono::high_resolution_clock::now();
-        //apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-
-        //start_time = std::chrono::high_resolution_clock::now();
+        
+        #ifdef TIMING
+        end_time = std::chrono::high_resolution_clock::now();
+        apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+    
+        start_time = std::chrono::high_resolution_clock::now();
+        #endif
         
         #pragma omp parallel for collapse(2)
         for (int i = 0; i < M.mesh.x_size; i++)
@@ -1305,22 +1316,21 @@ namespace BioFVM
                     index = index_dec;
                 }
             }
-        } 
-        /*
+        }
+
+        #ifdef TIMING
         end_time = std::chrono::high_resolution_clock::now();
         duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-        if (rank == 0)
-            //std::cout << "   Y diffussion: " << duration_ms << "ms" << std::endl;
-            file << duration_us << ",";*/
-         
-        //start_time = std::chrono::high_resolution_clock::now();
+        if (rank == 0) file << duration_us << ",";
+        start_time = std::chrono::high_resolution_clock::now();
+        #endif
         M.apply_dirichlet_conditions(rank, size);
-        //end_time = std::chrono::high_resolution_clock::now();
-        //apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-        //if (rank == 0)
-        //std::cout << "   Apply dirichlet: " << duration_ms << "ms" << std::endl;
-        
-        //start_time = std::chrono::high_resolution_clock::now();
+        #ifdef TIMING
+        end_time = std::chrono::high_resolution_clock::now();
+        apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+    
+        start_time = std::chrono::high_resolution_clock::now();
+        #endif
         #pragma omp parallel for collapse(2)
         for (int i = 0; i < M.mesh.x_size; i++)
         {
@@ -1366,25 +1376,20 @@ namespace BioFVM
                 }
             }
         }
-        //end_time = std::chrono::high_resolution_clock::now();
-        //duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-        //if (rank == 0)
-            //std::cout << "   Z diffussion: " << duration_ms << "ms" << std::endl;
-        //    file << duration_us << ",";
-
-        // t_end_z = MPI_Wtime();
-        // std::cout<<"Z solve time = "<<(t_end_z-t_strt_z)<<std::endl;
-        // cout << "Rank " << rank << " apply dirichlet" << endl;
-        //start_time = std::chrono::high_resolution_clock::now();
+        #ifdef TIMING
+        end_time = std::chrono::high_resolution_clock::now();
+        duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+        if (rank == 0) file << duration_us << ",";
+        start_time = std::chrono::high_resolution_clock::now();
+        #endif
         M.apply_dirichlet_conditions(rank, size);
-        //end_time = std::chrono::high_resolution_clock::now();
-        //apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-        //if (rank == 0)
-            //std::cout << "   Apply dirichlet: " << duration_ms << "ms" << std::endl;
-        //    file << apply_us/4.0 << std::endl;
-        // reset gradient vectors
-        //	M.reset_all_gradient_vectors();
-        // cout << "Rank " << rank << " have finished the diffusion" << endl;
+        
+        #ifdef TIMING
+        end_time = std::chrono::high_resolution_clock::now();
+        apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+    
+        if (rank == 0) file << apply_us << std::endl;
+        #endif
         
         return;
     }
@@ -1404,8 +1409,11 @@ namespace BioFVM
     }
 
     void diffusion_decay_solver__constant_coefficients_LOD_3D_AVX256D(Microenvironment &M, double dt, int size, int rank, int *coords, int *dims, MPI_Comm mpi_Cart_comm){
+        if (M.granurality <= 0) M.granurality = size;
         uint granurality = M.granurality;
-        //std::ofstream file(M.timing_csv, std::ios::app);
+        #ifdef TIMING
+        std::ofstream file(M.timing_csv, std::ios::app);
+        #endif
         int vl = 4;
 
         if (M.diffusion_solver_setup_done == false) {
@@ -1670,13 +1678,9 @@ namespace BioFVM
                 }
             }
             
-            /*
-            string path  = "./timing/voxels_" + std::to_string((int)cube_side/2.0) + "/substrates_" + std::to_string(number_of_densities) 
-            + "/factor_" + std::to_string(factor) +  "/" + std::to_string(mpi_size) + "_node.csv";*/
-            //std::ofstream file(M.timing_csv, std::ios::app);
-            //if (rank == 0) {
-            //    file << "X-diffusion,Y-diffusion,Z-diffusion,Apply Dirichlet" << std::endl;
-            //}
+            #ifdef TIMING
+                if (rank == 0) file << "X-diffusion,Y-diffusion,Z-diffusion,Apply Dirichlet" << std::endl;
+            #endif
             M.diffusion_solver_vectorized_setup_done = true;
             } 
     
@@ -1685,14 +1689,16 @@ namespace BioFVM
         MPI_Request send_req[n_req], recv_req[n_req];
         double block3d[M.thomas_i_jump]; //Aux structure of the size: Y*Z*Substrates
 
-        //auto start_time = std::chrono::high_resolution_clock::now();
-        M.apply_dirichlet_conditions_v2(rank, size);
-        //auto end_time = std::chrono::high_resolution_clock::now();
-        //auto apply_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-        //cout << "Peto aqui!" << endl;
-        //start_time = std::chrono::high_resolution_clock::now();
-        //X-diffusion vector_x_v2
-        //start_time = std::chrono::high_resolution_clock::now();
+        #ifdef TIMING
+        auto start_time = std::chrono::high_resolution_clock::now();
+        #endif
+        M.apply_dirichlet_conditions(rank, size);
+        #ifdef TIMING
+        auto end_time = std::chrono::high_resolution_clock::now();
+        auto apply_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+
+        start_time = std::chrono::high_resolution_clock::now();
+        #endif
         
         if (rank == 0)
         {
@@ -2129,17 +2135,20 @@ namespace BioFVM
                 }
             }
         }
-    //end_time = std::chrono::high_resolution_clock::now();
-    //auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-
-    //if (rank == 0)
-        //file << duration_us << ",";
-    //start_time = std::chrono::high_resolution_clock::now();
+    #ifdef TIMING
+    end_time = std::chrono::high_resolution_clock::now();
+    auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+    if (rank == 0) file << duration_us << ",";
+    start_time = std::chrono::high_resolution_clock::now();
+    #endif
     M.apply_dirichlet_conditions(rank, size);
-    //end_time = std::chrono::high_resolution_clock::now();
-    //apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-    //Y-diffusion
-    //start_time = std::chrono::high_resolution_clock::now();
+    
+    #ifdef TIMING
+    end_time = std::chrono::high_resolution_clock::now();
+    apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+
+    start_time = std::chrono::high_resolution_clock::now();
+    #endif
     #pragma omp parallel for
     for (int i = 0; i < M.mesh.x_size; i++)
     {
@@ -2244,17 +2253,19 @@ namespace BioFVM
             }
         }
     }
-    //end_time = std::chrono::high_resolution_clock::now();
-    //duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-    //if (rank == 0)
-        //file << duration_us << ",";
-    M.apply_dirichlet_conditions_v2(rank, size);
-    //end_time = std::chrono::high_resolution_clock::now();
-    //apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-    //Z-diffusion
-    //cout << "Peto aqui 3!" << endl;
+    #ifdef TIMING
+    end_time = std::chrono::high_resolution_clock::now();
+    duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+    if (rank == 0) file << duration_us << ",";
+    start_time = std::chrono::high_resolution_clock::now();
+    #endif
+    M.apply_dirichlet_conditions(rank, size);
+    #ifdef TIMING
+    end_time = std::chrono::high_resolution_clock::now();
+    apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
 
-    //start_time = std::chrono::high_resolution_clock::now();
+    start_time = std::chrono::high_resolution_clock::now();
+    #endif
     #pragma omp parallel for collapse(2)
     for (int i = 0; i < M.mesh.x_size; i++)
         {
@@ -2299,17 +2310,20 @@ namespace BioFVM
             }
         }
     }
-    //end_time = std::chrono::high_resolution_clock::now();
-    //duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-    //if (rank == 0)
-        //file << duration_us << ",";
+    #ifdef TIMING
+    end_time = std::chrono::high_resolution_clock::now();
+    duration_us = std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+    if (rank == 0) file << duration_us << ",";
+    start_time = std::chrono::high_resolution_clock::now();
+    #endif
+    M.apply_dirichlet_conditions(rank, size);
     
-    //start_time = std::chrono::high_resolution_clock::now();
-    M.apply_dirichlet_conditions_v2(rank, size);
-    //end_time = std::chrono::high_resolution_clock::now();
-    //apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
-     //if (rank == 0)
-        //file << apply_us/4.0 << std::endl;
+    #ifdef TIMING
+    end_time = std::chrono::high_resolution_clock::now();
+    apply_us += std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+
+    if (rank == 0) file << apply_us << std::endl;
+    #endif
     }   
 
     //-->Had to create a function like this else compiler complains of undefined reference to this function due to call in initialize_microenvironment() in microenvironment.cpp

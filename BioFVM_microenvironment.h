@@ -283,6 +283,10 @@ namespace BioFVM
 		void read_from_xml(std::string filename);								// not yet written
 
 		bool compare_microenvironment(Microenvironment reference);
+
+		void intialize_diffusion_coefficientents();
+		void initialize_diffusion_coefficients_mpi(Microenvironment &M, double dt, int size, int rank, int *coords, int *dims, MPI_Comm mpi_Cart_comm); 
+		void initalize_diffusion_vector_coefficientents(int vl);
 	};
 
 	extern void print_voxels_densities(Microenvironment& M, double dt, int size, int rank, int *coords, std::string *file_name ,int *dims, MPI_Comm mpi_Cart_comm );
