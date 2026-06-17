@@ -331,6 +331,47 @@ namespace BioFVM
 		return;
 	}
 
+	void Microenvironment::set_substrate_dirichlet_value(int substrate_index, double new_value)
+	{
+		if (substrate_index < 0 || substrate_index >= number_of_densities())
+		{
+			std::cout << "BioFVM Warning: Invalid substrate index " << substrate_index
+					  << " for Dirichlet value assignment." << std::endl;
+			return;
+		}
+
+		int densities = number_of_densities();
+		int voxels = number_of_voxels();
+		long int expected_size = voxels;
+		expected_size *= densities;
+
+		if (dirichlet_value_vectors.size() != expected_size)
+		{
+			dirichlet_value_vectors.resize(expected_size, 1.0);
+		}
+
+		for (int voxel_index = 0; voxel_index < voxels; voxel_index++)
+		{
+			dirichlet_value_vectors[voxel_index * densities + substrate_index] = new_value;
+		}
+
+		return;
+	}
+
+	void Microenvironment::set_substrate_dirichlet_value(std::string substrate_name, double new_value)
+	{
+		int substrate_index = find_density_index(substrate_name);
+		if (substrate_index < 0)
+		{
+			std::cout << "BioFVM Warning: Invalid substrate name " << substrate_name
+					  << " for Dirichlet value assignment." << std::endl;
+			return;
+		}
+
+		set_substrate_dirichlet_value(substrate_index, new_value);
+		return;
+	}
+
 	void Microenvironment::print_result( double dt, int mpi_Size, int mpi_Rank, int *mpi_Coords, std::string *file_name ,int *mpi_Dims, MPI_Comm mpi_Cart_comm )
 	{
 	
@@ -1056,7 +1097,7 @@ void Microenvironment::simulate_diffusion_decay( double dt, int mpi_Size, int mp
 			//Jose: can be optimezed by eliminating the loop
 			for( unsigned int j=0 ; j < number_of_densities() ; j++)
 			{ 
-				fwrite( (char*) &(p_density_vectors[density_index]) , sizeof(double) , 1 , fp ); 
+				fwrite( (char*) &( (*p_density_vectors)[density_index] ) , sizeof(double) , 1 , fp ); 
 				++density_index;
 			}
 		}

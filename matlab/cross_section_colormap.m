@@ -45,7 +45,16 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 clear
-file_name='../initial_concentration.mat';
+warning('off','all');
+file_name='./output/density_diffusion/density_diffusion_final.mat';
+[input_dir, file_base, ~] = fileparts(file_name);
+if isempty(input_dir)
+    input_dir='.';
+end
+output_dir=fullfile(input_dir,'plots');
+if exist(output_dir,'dir') ~= 7
+    mkdir(output_dir);
+end
 x=1;y=2;z=3;
 
 needed_plane=[x,y];
@@ -86,7 +95,7 @@ for i=5:size(multiscale_microenvironment,1)
     
     full_matrix=full(c1);
     
-    figure
+    figure('visible','off')
     imagesc(tempx, tempy, full_matrix(end:-1:1,:))
     shading flat
     colorbar('FontSize', 14)
@@ -102,4 +111,9 @@ for i=5:size(multiscale_microenvironment,1)
     set(gca,'XTickLabel',{num2str(minx),num2str((minx+maxy)/2),num2str(maxx)})
     xlabel([labels{needed_plane(1)},' (\mum)'])
     ylabel([labels{needed_plane(2)},' (\mum)'])
+
+    output_file=fullfile(output_dir,[file_base '_substrate_' num2str(i-4) '_colormap.png']);
+    print(gcf,output_file,'-dpng','-r200');
+    fprintf('Wrote %s\n',output_file);
+    close(gcf);
 end

@@ -273,7 +273,7 @@ int main(int argc, char *argv[])
 	microenvironment_opt.apply_dirichlet_conditions_v2(mpi_Rank, mpi_Size);
 	bool identical = microenvironment.compare_microenvironment(microenvironment_opt);
 
-	std::vector<double>::iterator it = microenvironment.density_vector(0,0,0);
+	double * it = microenvironment.density_vector(0,0,0);
 	cout << "This value " << *it << " should be 100" << endl;
 
 	if (identical == false) {

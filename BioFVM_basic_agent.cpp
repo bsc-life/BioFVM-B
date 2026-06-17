@@ -71,6 +71,9 @@ Basic_Agent::Basic_Agent()
 	is_active=true;
 	
 	volume = 1.0; 
+	volume_is_changed = false;
+	current_voxel_index = 0;
+	current_voxel_global_index = 0;
 	
 	position.assign( 3 , 0.0 );                        // initialize position and velocity
 	velocity.assign( 3 , 0.0 );

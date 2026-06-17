@@ -231,9 +231,9 @@ namespace BioFVM
 		/*! access the density vector at [x,y,z](n) */
 		double *density_vector(int n);
 
-		//Jose begin
+		
 		double *dirichlet_values(int i, int j, int k);
-		//Jose end
+		
 
 		/*! advance the diffusion-decay solver by dt time */
 		//void simulate_diffusion_decay(double dt, int mpi_Size, int mpi_Rank, int *mpi_Coords, int *mpi_Dims, MPI_Comm mpi_Cart_comm); //-->Gaurav Saxena changed this prototype
@@ -258,6 +258,8 @@ namespace BioFVM
 		void apply_dirichlet_conditions(int rank, int size);
 		void apply_dirichlet_conditions_v2(int rank, int size);
 
+		void set_substrate_dirichlet_value(int substrate_index, double new_value);
+		void set_substrate_dirichlet_value(std::string substrate_name, double new_value);
 		void set_substrate_dirichlet_activation(int substrate_index, bool new_value);
 
 		bool &is_dirichlet_node(int voxel_index);

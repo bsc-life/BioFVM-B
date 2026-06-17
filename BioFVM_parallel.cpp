@@ -540,6 +540,7 @@ namespace BioFVM
         strcpy(char_filename, filename.c_str());
 
         MPI_File_open(mpi_Cart_comm, char_filename, MPI_MODE_WRONLY | MPI_MODE_CREATE, MPI_INFO_NULL, &fh); // Equivalent fp = fopen( filename.c_str() , "wb" );
+        MPI_File_set_size(fh, 0);
 
         unsigned int temp;
         unsigned int type_numeric_format = 0; // little-endian assumed for now!
@@ -564,7 +565,7 @@ namespace BioFVM
         /*--------------------------------------------------------------------------------------------------------------------*/
 
         // UINT cols = (UINT) size_of_each_datum; // storing data as rows
-        unsigned int cols = (unsigned int)(ncols); // size*ncols: change for cohesion
+        unsigned int cols = (unsigned int)(size * ncols);
 
         if (rank == 0)
             MPI_File_write(fh, &cols, 1, MPI_UNSIGNED, MPI_STATUS_IGNORE); // fwrite( (char*) &cols, UINTs , 1 , fp );
@@ -727,7 +728,6 @@ namespace BioFVM
 
             vector<double> zero(M.mesh.n_substrates, 0.0);
             vector<double> one(M.mesh.n_substrates, 1.0);
-            double dt = 0.01;
 
             int step_size = (M.mesh.z_size * M.mesh.y_size) / granurality;
             
@@ -1433,7 +1433,6 @@ namespace BioFVM
 
             vector<double> zero(M.mesh.n_substrates, 0.0);
             vector<double> one(M.mesh.n_substrates, 1.0);
-            double dt = 0.01;
 
             int step_size = (M.mesh.z_size * M.mesh.y_size) / granurality;
             
@@ -1762,7 +1761,7 @@ namespace BioFVM
                     int x_end = M.mesh.x_size - 1;
                     int offset = step * M.snd_data_size;
                     MPI_Status status;
-                    MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + offset]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, MPI_COMM_WORLD, &send_req[step]);
+                    MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + offset]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, mpi_Cart_comm, &send_req[step]);
                 }
             }
             //Last iteration
@@ -1799,7 +1798,7 @@ namespace BioFVM
                     int x_end = M.mesh.x_size - 1;
                     int offset = granurality * M.snd_data_size;
                     MPI_Status status;
-                    MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + offset]), M.snd_data_size_last, MPI_DOUBLE, rank + 1, granurality, MPI_COMM_WORLD, &send_req[granurality]);
+                    MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + offset]), M.snd_data_size_last, MPI_DOUBLE, rank + 1, granurality, mpi_Cart_comm, &send_req[granurality]);
                     
                 }
             }
@@ -1811,10 +1810,10 @@ namespace BioFVM
                 for (int step = 0; step < granurality; ++step)
                 {
                     int initial_index = step * M.snd_data_size;
-                    MPI_Irecv(&(block3d[initial_index]), M.rcv_data_size, MPI_DOUBLE, rank-1, step, MPI_COMM_WORLD, &(recv_req[step]));
+                    MPI_Irecv(&(block3d[initial_index]), M.rcv_data_size, MPI_DOUBLE, rank-1, step, mpi_Cart_comm, &(recv_req[step]));
                 }
                 if (M.snd_data_size_last != 0)
-                    MPI_Irecv(&(block3d[granurality*M.snd_data_size]), M.rcv_data_size_last, MPI_DOUBLE, rank-1, granurality, MPI_COMM_WORLD, &(recv_req[granurality]));
+                    MPI_Irecv(&(block3d[granurality*M.snd_data_size]), M.rcv_data_size_last, MPI_DOUBLE, rank-1, granurality, mpi_Cart_comm, &(recv_req[granurality]));
                 for (int step = 0; step < granurality; ++step)
                 {
                     int initial_index = step * M.snd_data_size;
@@ -1894,7 +1893,7 @@ namespace BioFVM
                     if (rank < (size - 1))
                     {
                         int x_end = M.mesh.x_size - 1;
-                        MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + initial_index]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, MPI_COMM_WORLD, &send_req[step]);
+                        MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + initial_index]), M.snd_data_size, MPI_DOUBLE, rank + 1, step, mpi_Cart_comm, &send_req[step]);
                     }
                 }
                 if (M.snd_data_size_last != 0)
@@ -1941,7 +1940,7 @@ namespace BioFVM
                     {
                         int x_end = M.mesh.x_size - 1;
                         MPI_Request aux;
-                        MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + initial_index]), M.snd_data_size_last, MPI_DOUBLE, rank + 1, granurality, MPI_COMM_WORLD, &send_req[granurality]);
+                        MPI_Isend(&((*M.p_density_vectors)[x_end * M.thomas_i_jump + initial_index]), M.snd_data_size_last, MPI_DOUBLE, rank + 1, granurality, mpi_Cart_comm, &send_req[granurality]);
                       
                     }
                 }
@@ -1996,7 +1995,7 @@ namespace BioFVM
 
                 if (size > 1) {
                     MPI_Request aux;
-                    MPI_Isend(&((*M.p_density_vectors)[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, MPI_COMM_WORLD, &send_req[step]);
+                    MPI_Isend(&((*M.p_density_vectors)[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, mpi_Cart_comm, &send_req[step]);
                 }
             }
 
@@ -2021,7 +2020,7 @@ namespace BioFVM
                 }
                 if (size > 1) {
                     MPI_Request aux;
-                    MPI_Isend(&((*M.p_density_vectors)[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, MPI_COMM_WORLD, &send_req[granurality]);
+                    MPI_Isend(&((*M.p_density_vectors)[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, mpi_Cart_comm, &send_req[granurality]);
                 }
             
             }
@@ -2030,10 +2029,10 @@ namespace BioFVM
         {
             for (int step = 0; step < granurality; ++step)
             {
-                MPI_Irecv(&(block3d[step*M.snd_data_size]), M.rcv_data_size, MPI_DOUBLE, rank+1, step, MPI_COMM_WORLD, &recv_req[step]);
+                MPI_Irecv(&(block3d[step*M.snd_data_size]), M.rcv_data_size, MPI_DOUBLE, rank+1, step, mpi_Cart_comm, &recv_req[step]);
             }
             if (M.snd_data_size_last != 0)
-                MPI_Irecv(&(block3d[granurality*M.snd_data_size]), M.rcv_data_size_last, MPI_DOUBLE, rank+1, granurality, MPI_COMM_WORLD, &recv_req[granurality]);
+                MPI_Irecv(&(block3d[granurality*M.snd_data_size]), M.rcv_data_size_last, MPI_DOUBLE, rank+1, granurality, mpi_Cart_comm, &recv_req[granurality]);
 
             
             for (int step = 0; step < granurality; ++step)
@@ -2094,7 +2093,7 @@ namespace BioFVM
                 if (rank > 0)
                 {
                     MPI_Request aux;
-                    MPI_Isend(&((*M.p_density_vectors)[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, MPI_COMM_WORLD, &send_req[step]);
+                    MPI_Isend(&((*M.p_density_vectors)[step * M.snd_data_size]), M.snd_data_size, MPI_DOUBLE, rank - 1, step, mpi_Cart_comm, &send_req[step]);
                     // cout << "Rank " << rank << " has send" << endl;
                 }
             }
@@ -2131,7 +2130,7 @@ namespace BioFVM
                 if (rank > 0)
                 {
                     MPI_Request aux;
-                    MPI_Isend(&((*M.p_density_vectors)[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, MPI_COMM_WORLD, &send_req[granurality]);
+                    MPI_Isend(&((*M.p_density_vectors)[granurality * M.snd_data_size]), M.snd_data_size_last, MPI_DOUBLE, rank - 1, granurality, mpi_Cart_comm, &send_req[granurality]);
                 }
             }
         }
